@@ -31,17 +31,17 @@ substract:
     {
         if (typeof x === "number")
         {
-            return new Vector2D(this.x + x, this.y + y);
+            return new Vector2D(this.x - x, this.y - y);
         }
         else
         { 
             return new Vector2D(this.x - x.x, this.y - x.y);
         }
     },
-scalarMult:
-    function(v)
+multiply:
+    function(n)
     {
-        return new Vector2D(this.x * v, this.y * v);
+        return new Vector2D(this.x * n, this.y * n);
     },
 dot:
     function(v)
@@ -52,13 +52,25 @@ norm:
     function()
     {
         var invLen = 1 / this.length();
-        return this.scalarMult(invLen);
+        return this.multiply(invLen);
     },
 projectOnto:
     function(b)
     {
         var dp = this.dot(b);
         return new Vector2D( ( dp / (b.x*b.x + b.y*b.y) ) * b.x , ( dp / (b.x*b.x + b.y*b.y) ) * b.y );        
+    },
+angleTo:
+    function(v)
+    {
+        var deltaX = this.x - v.x;
+        var deltaY = this.y - v.y;
+        return Math.atan2(deltaY, deltaX);
+    },
+clone:
+    function()
+    {
+        return new Vector2D(this.x, this.y);
     },
 toString:
     function()
@@ -114,15 +126,13 @@ function checkVector(v)
 //Point is the point your trying to find
 function closestPointOnLineSegment(pt, a, b)
 {
-    checkVector(pt,a,b);
-    
     var c = pt.substract(a);
     
     var a2b = b.substract(a);
     
     var d = a2b.length();
 
-    var v = a2b.scalarMult(1 / d);
+    var v = a2b.multiply(1 / d);
     
     var t = v.dot(c);
     
@@ -136,6 +146,6 @@ function closestPointOnLineSegment(pt, a, b)
     {
         return b;
     }
-    return a.add(v.scalarMult(t));
+    return a.add(v.multiply(t));
 }
 

@@ -56,6 +56,18 @@ removeObject:
            var obj = obj.canvasObjs[i];
            this.rtree.remove( convertBBox(obj), obj);
        }
+    },
+step:
+    function()
+    {
+        for ( var i = 0, len = this.objects.length; i < len; i++)
+        {
+            var obj = this.objects[i];
+            if (typeof obj.move === "function")
+            {
+                obj.move();
+            }
+        }
     }
 });    
     
@@ -64,15 +76,15 @@ init: function(world)
     {     
         this.world = world;
         this.canvasObjs = Array.prototype.slice.call(arguments, 1);
-        this.x = 0;
-        this.y = 0;
+        this.pos = new Vector2D(0,0);
         world.addObject(this);
     },
 translate:
     function(x,y)
     {
-        this.x += x;
-        this.y += y;
+        var pos = this.pos;
+        pos.x += x;
+        pos.y += y;
         
         for (var i = 0, len = this.canvasObjs.length ; i < len ; i++)
         {
@@ -84,30 +96,46 @@ registerCanvasObjects:
     {
         var rtree = this.world.rtree;
         var canvasObjs = this.canvasObjs;
+        this.type = type;
         for (var i=0, len = canvasObjs.length; i < len ; i++)
         {
             var box = convertBBox(canvasObjs[i]); 
-            rtree.insert(box, {"type": type, "gameObject": this, "canvasObj": canvasObjs[i]});
+            rtree.insert(box, this);
         }
     }
 });    
 
 this.Polygon = GameObject.extend({
-    init: function(world, points, attrs)
+    init: function(world, pathData, attrs)
     {
-        this.points = points;
-        var l=[];
-        
-        l.push("M", points[0].x, ",", points[0].y);
-        for (var i=1, len = points.length; i < len; i++)
-        {
-            var p = points[i];
-            l.push("L", p.x, ",", p.y);
-        }
-        l.push(" Z");
-        var pathData = l.join("");
-        //console.debug(pathData);
+//        this.points = points;
+//        var l=[];
+//        
+//        l.push("M", points[0].x, ",", points[0].y);
+//        for (var i=1, len = points.length; i < len; i++)
+//        {
+//            var p = points[i];
+//            l.push("L", p.x, ",", p.y);
+//        }
+//        l.push(" Z");
+//        var pathData = l.join("");
+//        //console.debug(pathData);
         var path = world.paper.path(pathData);
+        
+        // readback converted path Data
+        var pathData = path.attr("path");
+        
+        this.points = [];
+        
+        for ( var i = 0, len = pathData.length; i < len; i++)
+        {
+            var cmd = pathData[i];
+            
+            if (cmd.length == 3)
+            {
+                this.points.push(new Vector2D(+cmd[1],+cmd[2]));
+            }
+        }
         
         if (attrs)
         {
@@ -161,11 +189,10 @@ insertLineBox:
         }
         
         var paper = this.world.paper;
-        var offX = paper.width / 2;
         var offY = paper.height / 2;
         
         var box = { "x": x, "y": y, "w": w, "h": h};
-        var obj = {"type":"line", "pt0": pt0, "pt1": pt1 , "bboxRect": this.world.paper.rect(x + offX,y + offY,w,h).attr("stroke", "#080").hide()};
+        var obj = {"type":"line", "pt0": pt0, "pt1": pt1};
         //console.debug("box: %d, %d - %d x %d", box.x + offX,box.y + offY,box.w,box.h );
         rtree.insert( box, obj);
     }    
@@ -174,8 +201,6 @@ function randomColor()
 {
     return "rgb(" + Math.random() * 255 + "," + Math.random() * 255 + "," + Math.random() * 255 + ")";
 }
-
-var playerBBox, lastCandidates;
 
 this.Player = GameObject.extend({
 init: function(world)
@@ -187,13 +212,13 @@ init: function(world)
         this.thrustPower = 40;
         
         this._super(world,circle);
-        //this.registerCanvasObjects("player");
+        this.registerCanvasObjects("player");
     },
 explode:
     function()
     {
         this.dead = true;
-        this.canvasObjs[0].animate({"fill": "#fcc", "stroke": "#f00", "r": this.radius * 3, "stroke-width": 10, "stroke-opacity": 0.3}, 500, "bounce", function()
+        this.canvasObjs[0].animate({"fill": "#ffc", "stroke": "#f00", "r": this.radius * 3, "stroke-width": 10, "stroke-opacity": 0.3}, 500, "bounce", function()
         {
             this.hide();
         })
@@ -209,8 +234,8 @@ move:
         var point = this.thrustPoint; 
         if (point)
         {
-            var deltaX = this.x - point.x;
-            var deltaY = this.y - point.y;
+            var deltaX = this.pos.x - point.x;
+            var deltaY = this.pos.y - point.y;
             
             
             var angle = Math.atan2(deltaY, deltaX);
@@ -233,39 +258,16 @@ move:
 //            console.debug("candidates = %o", candidates);
 //        }
         
-//        if (!playerBBox)
-//        {
-//            playerBBox = paper.rect(box.x + offX,box.y,box.w,box.h).attr("stroke", "#800");
-//        }
-//        else
-//        {
-//            playerBBox.attr({"x": box.x + offX, "y": box.y + offY});
-//        }
-
-        if (lastCandidates != null)
-        {
-            for ( var i = 0, len = lastCandidates.length; i < len; i++)
-            {
-                var candidate = lastCandidates[i];
-                if (candidate.bboxRect)
-                {
-                    candidate.bboxRect.hide();
-                }
-            }
-        }
-        
         for ( var i = 0, len = candidates.length; i < len; i++)
         {
             var candidate = candidates[i];
-            if (candidate.bboxRect)
+            if (candidate.type === "line")
             {
-                candidate.bboxRect.show();
-                
                 if (candidate.pt0 && candidate.pt1)
                 {
-                    //console.debug("%d,%d - %d, %d  - %d, %d", this.x, this.y, candidate.pt0.x, candidate.pt0.y, candidate.pt1.x, candidate.pt1.y)
+                    //console.debug("%d,%d - %d, %d  - %d, %d", this.pos.x, this.pos.y, candidate.pt0.x, candidate.pt0.y, candidate.pt1.x, candidate.pt1.y)
                     
-                    var ptPlayer = new Vector2D(this.x - offX, this.y - offY);
+                    var ptPlayer = new Vector2D(this.pos.x - offX, this.pos.y - offY);
                     var closest = closestPointOnLineSegment(ptPlayer, candidate.pt0, candidate.pt1);
                     
                     var distance = closest.substract(ptPlayer).length();
@@ -278,15 +280,13 @@ move:
             }
         }
         
-        lastCandidates = candidates;
-        
         this.dy += this.world.gravity;
         
-        if (this.x - this.radius < 0 || this.x + this.radius > this.world.paper.width)
+        if (this.pos.x - this.radius < 0 || this.pos.x + this.radius > this.world.paper.width)
         {
             this.dx = -this.dx;
         }
-        if (this.y - this.radius < 0 || this.y + this.radius > this.world.paper.height )
+        if (this.pos.y - this.radius < 0 || this.pos.y + this.radius > this.world.paper.height )
         {
             this.dy = -this.dy;
         }
@@ -296,7 +296,146 @@ thrust:
     function(point)
     {
         this.thrustPoint = point;
+    },
+shoot:
+    function(point)
+    {
+        var angle = point.angleTo(this.pos);
+        
+        new Bullet(world, this.pos.clone(), angle);
     }
 });    
     
+this.Bullet = GameObject.extend({
+init:
+    function(world, pt, angle)
+    {
+        this.dx = Math.cos(angle) * 4;
+        this.dy = Math.sin(angle) * 4;
+        this.radius = 4;
+        
+        var circle = world.paper.circle(pt.x, pt.y, this.radius).attr({"fill":"#fffff8", "stroke":"#fc8"});
+        this._super(world, circle);
+        this.pos = pt;
+        
+        
+        this.ricochet = true;
+    },
+move:
+    function()
+    {
+        var paper = this.world.paper;
+        
+        if (this.pos.x - this.radius < 0 || this.pos.x + this.radius > paper.width)
+        {
+            this.dx = -this.dx;
+        }
+        if (this.pos.y - this.radius < 0 || this.pos.y + this.radius > paper.height )
+        {
+            this.dy = -this.dy;
+        }
+        
+        this.pos.x += this.dx;
+        this.pos.y += this.dy;
+        
+        if (this.ricochet)
+        {
+            var box = convertBBox(this.canvasObjs[0]);
+            var offX = paper.width / 2;
+            var offY = paper.height / 2;
+            var candidate;
+            
+            box.x -= offX;
+            box.y -= offY;
+            var candidates = this.world.rtree.search(box);
+
+            //console.debug("candidates = %o, len = %s", candidates, candidates.length);
+            var minDistance = Infinity, bestCandidate;
+            for ( var i = 0, len = candidates.length; i < len; i++)
+            {
+                candidate = candidates[i];
+                if (candidate && candidate.type === "line")
+                {
+                    var ptBullet = this.pos.substract(offX, offY);
+                    var closest = closestPointOnLineSegment(ptBullet, candidate.pt0, candidate.pt1);
+                    
+                    var distance = closest.substract(ptBullet).length();
+                    if (distance < minDistance)
+                    {
+                        minDistance = distance;
+                        bestCandidate = candidate;
+                    }
+                }
+            }
+            
+            if (minDistance < this.radius)
+            {
+                candidate = bestCandidate;
+                distance = minDistance;
+                        
+                //    \ v2   
+                //     \   
+                //     |\  
+                //     | \v 
+                //     |  \
+                //   r |  |\ 
+                //     |  | \ v1
+                //     | d|  \
+                //     |  |   \
+                //     +--+----*--------
+                //
+                // calculate length of v1 by |v1| = OPPOSITE / sin(angle) 
+                
+                var v = new Vector2D(this.dx,this.dy);
+                var vLen = v.length();
+                var vNorm = v.multiply( 1 / vLen);
+                
+                // vector from closest to ptBullet, rotated 90 clockwise
+                var vD = ptBullet.substract(closest);
+
+                var h = -vD.x;
+                vD.x = vD.y;
+                vD.y = h;
+                
+                var angle = Math.acos(vD.norm().dot(vNorm));
+                
+                
+                var v1Len = distance / Math.sin(angle) ;
+                
+                // Intercept theorem says that |v1| / d = (|v1| + |v| - |v2| ) / r, solve for |v2|
+                // |v2| = - |v1| * r / d + |v1| + |v|
+                
+                var v2Len = v1Len + vLen - (v1Len * this.radius / distance);
+
+                var remainder = vLen - v2Len;
+
+                // move back bullet to tangent point
+                var vBack = vNorm.multiply(-remainder);
+                this.pos.x += vBack.x;
+                this.pos.y += vBack.y;
+                
+                var angle = ptBullet.angleTo(closest);
+                
+                var dirAngle = Math.atan2(this.dy, this.dx);
+                
+                angle += angle - dirAngle + Math.PI;
+                          
+                var cos = Math.cos(angle);
+                var sin = Math.sin(angle);
+                
+                this.dx = cos * vLen;
+                this.dy = sin * vLen;
+                
+                this.x += cos * remainder;
+                this.y += sin * remainder;
+                
+                //this.ricochet = false;
+            }
+        }
+        
+        this.canvasObjs[0].attr({cx: this.pos.x, cy: this.pos.y});
+        
+        
+    }
+});
 })();
