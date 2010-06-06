@@ -1,14 +1,14 @@
+var paper, paperWidth, paperHeight, world, player;
 (function($,window,undefined)
 {
 
-var paper, paperWidth, paperHeight, world, player;
 
 function points()
 {
     var l = [];
     for (var i=0, len = arguments.length; i < len; i+=2 )
     {
-        l.push({ x: arguments[i], y: arguments[i+1] });
+        l.push( new Vector2D( arguments[i], arguments[i+1]));
     }
     return l;
 }
@@ -21,8 +21,8 @@ init:
     {
         var $wnd = $(window);
         
-        paperWidth = $wnd.width() - 8;
-        paperHeight = $wnd.height() - 8;
+        paperWidth = $wnd.width();
+        paperHeight = $wnd.height();
         
         paper = Raphael("holder", paperWidth, paperHeight);
         
@@ -40,20 +40,18 @@ init:
 
         poly.translate(paperWidth / 2, paperHeight / 2);
         
-        var bbox = poly.canvasObjs[0].getBBox();
-        paper.rect(bbox.x, bbox.y, bbox.width, bbox.height).attr("stroke","red");
-        
         player = new Player(world);
         player.translate(paperWidth / 4,paperHeight / 4);
 
         //console.debug("paper = %o", paper);
         
-        $canvas = $(paper.canvas);
         function thrust(ev) 
         { 
-            var offset = $canvas.offset();
+            var point = new Vector2D( ev.pageX , ev.pageY);
+            //var pos = new Vector2D(player.x,player.y);
+            //console.debug("point = %s, pos = %s", point,pos);
+            player.thrust( point);
             
-            player.thrust({x: ev.pageX - offset.left, y: ev.pageY - offset.top});
             mouseDown = true;
         }
         

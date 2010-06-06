@@ -59,6 +59,11 @@ projectOnto:
     {
         var dp = this.dot(b);
         return new Vector2D( ( dp / (b.x*b.x + b.y*b.y) ) * b.x , ( dp / (b.x*b.x + b.y*b.y) ) * b.y );        
+    },
+toString:
+    function()
+    {
+        return "( " + this.x + ", " + this.y + ")";
     }
 };
 
@@ -91,12 +96,26 @@ function isInside(pt, triPts)
     return (u > 0) && (v > 0) && (u + v < 1)
 }
 
+function checkVector(v)
+{
+    for ( var i = 0, len = arguments.length; i < len; i++)
+    {
+        var arg = arguments[i];
+        if (!arg || typeof arg.projectOnto !== "function")
+        {
+            console.debug("%o is no vector", arg);
+        }
+    }
+
+}
 
 //a is the first point on the line segment
 //b is the second point on the line segment
 //Point is the point your trying to find
 function closestPointOnLineSegment(pt, a, b)
 {
+    checkVector(pt,a,b);
+    
     var c = pt.substract(a);
     
     var a2b = b.substract(a);
