@@ -28,7 +28,10 @@ function removeFromArray(array,obj)
         }
     }
     
-    return array.splice(idx,1);
+    if (idx >= 0)
+    {
+        array.splice(idx,1);
+    }
 }
 
 this.World = Class.extend({
@@ -49,13 +52,13 @@ addObject:
 removeObject:
     function(obj)
     {
-       this.objects = removeFromArray(this.objects, obj);
-       
        for (var i = 0, len = obj.canvasObjs.length ; i < len ; i++)
        {
            var obj = obj.canvasObjs[i];
            this.rtree.remove( convertBBox(obj), obj);
+           obj.remove();
        }
+       removeFromArray(this.objects, obj);
     },
 step:
     function()
@@ -189,11 +192,9 @@ insertLineBox:
         }
         
         var paper = this.world.paper;
-        var offY = paper.height / 2;
         
         var box = { "x": x, "y": y, "w": w, "h": h};
         var obj = {"type":"line", "pt0": pt0, "pt1": pt1};
-        //console.debug("box: %d, %d - %d x %d", box.x + offX,box.y + offY,box.w,box.h );
         rtree.insert( box, obj);
     }    
 });    
@@ -246,11 +247,7 @@ move:
         
         var box = convertBBox(this.canvasObjs[0]);
         var paper = this.world.paper;
-        var offX = paper.width / 2;
-        var offY = paper.height / 2;
         
-        box.x -= offX;
-        box.y -= offY;
         var candidates = this.world.rtree.search(box);
         
 //        if (candidates.length > 0)
@@ -267,7 +264,7 @@ move:
                 {
                     //console.debug("%d,%d - %d, %d  - %d, %d", this.pos.x, this.pos.y, candidate.pt0.x, candidate.pt0.y, candidate.pt1.x, candidate.pt1.y)
                     
-                    var ptPlayer = new Vector2D(this.pos.x - offX, this.pos.y - offY);
+                    var ptPlayer = new Vector2D(this.pos.x, this.pos.y);
                     var closest = closestPointOnLineSegment(ptPlayer, candidate.pt0, candidate.pt1);
                     
                     var distance = closest.substract(ptPlayer).length();
@@ -319,34 +316,36 @@ init:
         this.pos = pt;
         
         
-        this.ricochet = true;
+        this.ricochet = 5;
     },
 move:
     function()
     {
         var paper = this.world.paper;
-        
+     
         if (this.pos.x - this.radius < 0 || this.pos.x + this.radius > paper.width)
         {
             this.dx = -this.dx;
+            this.ricochet--;
         }
         if (this.pos.y - this.radius < 0 || this.pos.y + this.radius > paper.height )
         {
             this.dy = -this.dy;
+            this.ricochet--;
         }
         
         this.pos.x += this.dx;
         this.pos.y += this.dy;
         
-        if (this.ricochet)
+        if (!this.ricochet)
+        {
+            world.removeObject(this);
+        }
+        else
         {
             var box = convertBBox(this.canvasObjs[0]);
-            var offX = paper.width / 2;
-            var offY = paper.height / 2;
             var candidate;
             
-            box.x -= offX;
-            box.y -= offY;
             var candidates = this.world.rtree.search(box);
 
             //console.debug("candidates = %o, len = %s", candidates, candidates.length);
@@ -356,7 +355,7 @@ move:
                 candidate = candidates[i];
                 if (candidate && candidate.type === "line")
                 {
-                    var ptBullet = this.pos.substract(offX, offY);
+                    var ptBullet = this.pos;
                     var closest = closestPointOnLineSegment(ptBullet, candidate.pt0, candidate.pt1);
                     
                     var distance = closest.substract(ptBullet).length();
@@ -429,13 +428,10 @@ move:
                 this.x += cos * remainder;
                 this.y += sin * remainder;
                 
-                //this.ricochet = false;
+                this.ricochet--;
             }
+            this.canvasObjs[0].attr({cx: this.pos.x, cy: this.pos.y});
         }
-        
-        this.canvasObjs[0].attr({cx: this.pos.x, cy: this.pos.y});
-        
-        
     }
 });
 })();

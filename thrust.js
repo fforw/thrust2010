@@ -50,7 +50,7 @@ init:
         }
         
         player = new Player(world);
-        player.translate(paperWidth / 10,paperHeight / 4);
+        player.translate(paperWidth / 20,paperHeight / 4);
 
         //console.debug("paper = %o", paper);
         
