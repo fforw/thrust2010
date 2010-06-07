@@ -219,9 +219,26 @@ explode:
     function()
     {
         this.dead = true;
-        this.canvasObjs[0].animate({"fill": "#ffc", "stroke": "#f00", "r": this.radius * 3, "stroke-width": 10, "stroke-opacity": 0.3}, 500, "bounce", function()
+        
+        var paper = this.world.paper;
+
+        function subExplode(d)
+        {
+            var subAngle = Math.random() * Math.PI * 2 ;
+            var dist = this.radius * d;
+            return paper.circle(this.pos.x + Math.cos(subAngle) * dist , this.pos.y + + Math.sin(subAngle) * dist, this.radius * 0.2)
+                .attr({"fill" : "#fc8", stroke: "#800", "fill-opacity": 0.3})
+                .animate({"fill": "#ffc", "stroke": "#f00", "r": this.radius * 2.4, "fill-opacity": 0.3}, 400);
+        }
+        
+        var circle = subExplode.call(this,1.5);
+        var circle2 = subExplode.call(this, 1.2);
+        
+        this.canvasObjs[0].animate({"fill": "#ffc", "stroke": "#f44", "r": this.radius * 3, "stroke-width": 10, "stroke-opacity": 0.3}, 500, "bounce", function()
         {
             this.hide();
+            circle.remove();
+            circle2.remove();
         })
     },
 move:
@@ -371,7 +388,21 @@ move:
             {
                 candidate = bestCandidate;
                 distance = minDistance;
-                        
+
+                
+                var v = new Vector2D(this.dx,this.dy);
+                var vLen = v.length();
+                var vNorm = v.multiply( 1 / vLen);
+
+                // calculate angle between direction vector and edge
+                // vector from closest to ptBullet, rotated 90 clockwise
+                var vD = ptBullet.substract(closest);
+                var h = -vD.x;
+                vD.x = vD.y;
+                vD.y = h;
+
+                var angle = Math.acos(vD.norm().dot(vNorm));
+                
                 //    \ v2   
                 //     \   
                 //     |\  
@@ -385,26 +416,13 @@ move:
                 //
                 // calculate length of v1 by |v1| = OPPOSITE / sin(angle) 
                 
-                var v = new Vector2D(this.dx,this.dy);
-                var vLen = v.length();
-                var vNorm = v.multiply( 1 / vLen);
-                
-                // vector from closest to ptBullet, rotated 90 clockwise
-                var vD = ptBullet.substract(closest);
-
-                var h = -vD.x;
-                vD.x = vD.y;
-                vD.y = h;
-                
-                var angle = Math.acos(vD.norm().dot(vNorm));
-                
                 
                 var v1Len = distance / Math.sin(angle) ;
                 
                 // Intercept theorem says that |v1| / d = (|v1| + |v| - |v2| ) / r, solve for |v2|
-                // |v2| = - |v1| * r / d + |v1| + |v|
+                // |v2| = |v1| + |v| - |v1| * r / d
                 
-                var v2Len = v1Len + vLen - (v1Len * this.radius / distance);
+                var v2Len = v1Len + vLen - v1Len * this.radius / distance;
 
                 var remainder = vLen - v2Len;
 
