@@ -7,6 +7,32 @@ function convertBBox(obj)
     return {x: raphBBox.x, y: raphBBox.y, w:raphBBox.width, h: raphBBox.height};
 }
 
+function removeThis()
+{
+    this.remove();
+}
+
+function subExplode( d, millis, sizeStart, sizeEnd)
+{
+    var subAngle = Math.random() * Math.PI * 2;
+    var dist = this.radius * d;
+
+    this.world.paper.circle(this.pos.x + Math.cos(subAngle) * dist,
+            this.pos.y + +Math.sin(subAngle) * dist,
+            this.radius * sizeStart).attr( {
+        "fill" : "#fc8",
+        stroke : "#800",
+        "fill-opacity" : 0.1
+    })
+
+    .animate( {
+        "fill" : "#ffc",
+        "stroke" : "#f00",
+        "r" : this.radius * sizeEnd,
+        "fill-opacity" : 0.8
+    }, millis, d == 0 ? "bounce" : "linear", removeThis);
+}
+
 var _indexOf = Array.prototype.indexOf;
 
 function removeFromArray(array,obj)
@@ -221,64 +247,14 @@ explode :
 
         var paper = this.world.paper;
 
-        function subExplode(d, fn, millis, sizeStart, sizeEnd)
-        {
-            var subAngle = Math.random() * Math.PI * 2;
-            var dist = this.radius * d;
-
-            return paper.circle(this.pos.x + Math.cos(subAngle) * dist,
-                    this.pos.y + +Math.sin(subAngle) * dist,
-                    this.radius * sizeStart).attr( {
-                "fill" : "#fc8",
-                stroke : "#800",
-                "fill-opacity" : 0.3
-            })
-
-            .animate( {
-                "fill" : "#ffc",
-                "stroke" : "#f00",
-                "r" : this.radius * sizeEnd,
-                "fill-opacity" : 0.3
-            }, millis, fn);
-        }
 
         this.canvasObjs[0].hide();
-
-        var circle = subExplode.call(this, 1.5, null, 400, 0.2, 2.4);
-        var circle2 = subExplode.call(this, 1.2, null, 400, 0.3, 2.1);
-        subExplode.call(this, 0.0, function()
-        {
-            this.remove();
-            circle.remove();
-            circle2.remove();
-
-        }, 500, 1.0, 2.5);
-    },
-explode:
-    function()
-    {
         this.dead = true;
-        
-        var paper = this.world.paper;
 
-        function subExplode(d)
-        {
-            var subAngle = Math.random() * Math.PI * 2 ;
-            var dist = this.radius * d;
-            return paper.circle(this.pos.x + Math.cos(subAngle) * dist , this.pos.y + + Math.sin(subAngle) * dist, this.radius * 0.2)
-                .attr({"fill" : "#fc8", stroke: "#800", "fill-opacity": 0.3})
-                .animate({"fill": "#ffc", "stroke": "#f00", "r": this.radius * 2.4, "fill-opacity": 0.3}, 400);
-        }
+        subExplode.call(this, 0.9, 400, 0.2, 2.4);
+        subExplode.call(this, 1.2, 500, 0.3, 2.1);
+        subExplode.call(this, 0.0, 600, 1.0, 2.5);
         
-        var circle = subExplode.call(this,1.5);
-        var circle2 = subExplode.call(this, 1.2);
-        
-        this.canvasObjs[0].animate({"fill": "#ffc", "stroke": "#f44", "r": this.radius * 3, "stroke-width": 10, "stroke-opacity": 0.3}, 500, "bounce", function()
-        {
-            this.hide();
-            circle.remove();
-            circle2.remove();
-        })
     },
 move:
     function()
