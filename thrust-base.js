@@ -215,6 +215,45 @@ init: function(world)
         this._super(world,circle);
         this.registerCanvasObjects("player");
     },
+explode : 
+    function()
+    {
+
+        var paper = this.world.paper;
+
+        function subExplode(d, fn, millis, sizeStart, sizeEnd)
+        {
+            var subAngle = Math.random() * Math.PI * 2;
+            var dist = this.radius * d;
+
+            return paper.circle(this.pos.x + Math.cos(subAngle) * dist,
+                    this.pos.y + +Math.sin(subAngle) * dist,
+                    this.radius * sizeStart).attr( {
+                "fill" : "#fc8",
+                stroke : "#800",
+                "fill-opacity" : 0.3
+            })
+
+            .animate( {
+                "fill" : "#ffc",
+                "stroke" : "#f00",
+                "r" : this.radius * sizeEnd,
+                "fill-opacity" : 0.3
+            }, millis, fn);
+        }
+
+        this.canvasObjs[0].hide();
+
+        var circle = subExplode.call(this, 1.5, null, 400, 0.2, 2.4);
+        var circle2 = subExplode.call(this, 1.2, null, 400, 0.3, 2.1);
+        subExplode.call(this, 0.0, function()
+        {
+            this.remove();
+            circle.remove();
+            circle2.remove();
+
+        }, 500, 1.0, 2.5);
+    },
 explode:
     function()
     {
