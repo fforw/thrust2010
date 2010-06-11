@@ -262,8 +262,6 @@ move:
         if (this.dead)
             return;
         
-        this.translate(this.dx,this.dy);
-        
         var point = this.thrustPoint; 
         if (point)
         {
@@ -311,15 +309,46 @@ move:
         
         this.dy += this.world.gravity;
         
-        if (this.pos.x - this.radius < 0 || this.pos.x + this.radius > this.world.paper.width)
+        var paperWidth = this.world.paper.width;
+        var paperHeight = this.world.paper.height;
+        
+        
+        if (this.pos.x - this.radius < 0 || this.pos.x + this.radius > paperWidth)
         {
             this.dx = -this.dx;
         }
-        if (this.pos.y - this.radius < 0 || this.pos.y + this.radius > this.world.paper.height )
+        if (this.pos.y - this.radius < 0 || this.pos.y + this.radius > paperHeight )
         {
             this.dy = -this.dy;
         }
+
+        this.translate(this.dx,this.dy);
         
+        var scrollX = this.x - paperWidth / 2;
+        var scrollY = this.y - paperHeight / 2;
+     
+        var $wnd = $(window);
+        var maxX = paperWidth - $wnd.width();
+        var maxY = paperHeight - $wnd.height();
+        
+        if (scrollX < 0)
+        {
+            scrollX = 0;
+        }
+        else if (scrollX > maxX)
+        {
+            scrollX = max;
+        }    
+        if (scrollY < 0)
+        {
+            scrollY = 0;
+        }
+        else if (scrollY > maxY)
+        {
+            scrollY = maxY;
+        }    
+        
+        $("#holder").scrollTop(scrollY).scrollLeft(scrollX);
     },
 thrust:
     function(point)
