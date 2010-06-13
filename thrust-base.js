@@ -206,14 +206,31 @@ function randomColor()
 this.Player = GameObject.extend({
 init: function(world)
     {    
-        this.radius = 10;
-        var circle = world.paper.circle(0, 0, 10).attr({"fill": "#00f", stroke: "#88f"});
+        this._super(world);
+        this.reset();
+        this.registerCanvasObjects("player");
+    },
+reset:
+    function()
+    {
+        var paper = this.world.paper;
+        this.canvasObjs[0] = paper.circle(0, 0, 10);
+        
+        this.pos.x = paper.width / 20;
+        this.pos.y = paper.height / 4;
+        
         this.dx = 0;
         this.dy = 0;
+        this.radius = 10;
         this.thrustPower = 40;
         
-        this._super(world,circle);
-        this.registerCanvasObjects("player");
+        this.canvasObjs[0].attr({
+            "fill": "#00f", 
+            "stroke": "#88f", 
+            "r" : this.radius, 
+            "cx" : this.pos.x , 
+            "cy" : this.pos.y});
+        
     },
 explode:
     function()
@@ -228,17 +245,22 @@ explode:
             var dist = this.radius * d;
             return paper.circle(this.pos.x + Math.cos(subAngle) * dist , this.pos.y + + Math.sin(subAngle) * dist, this.radius * 0.2)
                 .attr({"fill" : "#fc8", stroke: "#800", "fill-opacity": 0.3})
-                .animate({"fill": "#ffc", "stroke": "#f00", "r": this.radius * 2.4, "fill-opacity": 0.3}, 400);
+                .animate({"fill": "#ffc", "stroke": "#f00", "r": this.radius * 2.4, "fill-opacity": 0.5, "stroke-opacity": 0.3}, 400);
         }
         
-        var circle = subExplode.call(this,1.5);
-        var circle2 = subExplode.call(this, 1.2);
+        var circle = this.canvasObjs[0];
+        var circle2 = subExplode.call(this,1.5);
+        var circle3 = subExplode.call(this, 1.2);
         
-        this.canvasObjs[0].animate({"fill": "#ffc", "stroke": "#f44", "r": this.radius * 3, "stroke-width": 10, "stroke-opacity": 0.3}, 500, "bounce", function()
+        circle2.insertBefore(circle);
+        circle3.insertBefore(circle);
+        
+        var that = this;
+        circle.animate({"fill": "#ffc", "stroke": "#f44", "r": this.radius * 3, "stroke-width": 10, "fill-opacity": 0.5, "stroke-opacity": 0.3}, 500, "bounce", function()
         {
-            this.hide();
-            circle.remove();
+            that.reset();
             circle2.remove();
+            circle3.remove();
         })
     },
 move:
@@ -362,17 +384,17 @@ move:
         {
             var box = convertBBox(this.canvasObjs[0]);
             var candidate;
+            var ptBullet = this.pos;
             
             var candidates = this.world.rtree.search(box);
 
             //console.debug("candidates = %o, len = %s", candidates, candidates.length);
-            var minDistance = Infinity, bestCandidate;
+            var minDistance = Infinity, bestCandidate, bestClosest;
             for ( var i = 0, len = candidates.length; i < len; i++)
             {
                 candidate = candidates[i];
                 if (candidate && candidate.type === "line")
                 {
-                    var ptBullet = this.pos;
                     var closest = closestPointOnLineSegment(ptBullet, candidate.pt0, candidate.pt1);
                     
                     var distance = closest.substract(ptBullet).length();
@@ -380,6 +402,7 @@ move:
                     {
                         minDistance = distance;
                         bestCandidate = candidate;
+                        bestClosest = closest;
                     }
                 }
             }
@@ -388,7 +411,7 @@ move:
             {
                 candidate = bestCandidate;
                 distance = minDistance;
-
+                closest = bestClosest;
                 
                 var v = new Vector2D(this.dx,this.dy);
                 var vLen = v.length();
@@ -403,16 +426,18 @@ move:
 
                 var angle = Math.acos(vD.norm().dot(vNorm));
                 
-                //    \ v2   
-                //     \   
-                //     |\  
+                // Intercept theorem
+                //
+                //    \ v2               v,v1,v2 are vectors from the top of      
+                //     \                 the graph to the "V", r is the radius of the circle       
+                //     |\                and d the distance to the closest point we found.
                 //     | \v 
                 //     |  \
                 //   r |  |\ 
                 //     |  | \ v1
                 //     | d|  \
                 //     |  |   \
-                //     +--+----*--------
+                //     +--+----V--------
                 //
                 // calculate length of v1 by |v1| = OPPOSITE / sin(angle) 
                 
