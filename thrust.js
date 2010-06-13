@@ -21,8 +21,11 @@ init:
     {
         var $wnd = $(window);
         
-        paperWidth = $wnd.width();
-        paperHeight = $wnd.height();
+        var wHeight = $wnd.height();
+        paperWidth = $wnd.width() * 2;
+        paperHeight = wHeight * 2;
+        
+        $("#holder").height(wHeight);
         
         paper = Raphael("holder", paperWidth, paperHeight);
         

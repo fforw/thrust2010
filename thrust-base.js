@@ -7,6 +7,32 @@ function convertBBox(obj)
     return {x: raphBBox.x, y: raphBBox.y, w:raphBBox.width, h: raphBBox.height};
 }
 
+function removeThis()
+{
+    this.remove();
+}
+
+function subExplode( d, millis, sizeStart, sizeEnd, fn)
+{
+    var subAngle = Math.random() * Math.PI * 2;
+    var dist = this.radius * d;
+
+    this.world.paper.circle(this.pos.x + Math.cos(subAngle) * dist,
+            this.pos.y + +Math.sin(subAngle) * dist,
+            this.radius * sizeStart).attr( {
+        "fill" : "#fc8",
+        stroke : "#800",
+        "fill-opacity" : 0.1
+    })
+
+    .animate( {
+        "fill" : "#ffc",
+        "stroke" : "#f00",
+        "r" : this.radius * sizeEnd,
+        "fill-opacity" : 0.8
+    }, millis, d == 0 ? "bounce" : "linear", fn ? function() { fn.call(this); removerThis.call(this); } : removeThis);
+}
+
 var _indexOf = Array.prototype.indexOf;
 
 function removeFromArray(array,obj)
@@ -232,44 +258,28 @@ reset:
             "cy" : this.pos.y});
         
     },
-explode:
+explode : 
     function()
     {
-        this.dead = true;
-        
+
         var paper = this.world.paper;
 
-        function subExplode(d)
-        {
-            var subAngle = Math.random() * Math.PI * 2 ;
-            var dist = this.radius * d;
-            return paper.circle(this.pos.x + Math.cos(subAngle) * dist , this.pos.y + + Math.sin(subAngle) * dist, this.radius * 0.2)
-                .attr({"fill" : "#fc8", stroke: "#800", "fill-opacity": 0.3})
-                .animate({"fill": "#ffc", "stroke": "#f00", "r": this.radius * 2.4, "fill-opacity": 0.5, "stroke-opacity": 0.3}, 400);
-        }
-        
-        var circle = this.canvasObjs[0];
-        var circle2 = subExplode.call(this,1.5);
-        var circle3 = subExplode.call(this, 1.2);
-        
-        circle2.insertBefore(circle);
-        circle3.insertBefore(circle);
-        
-        var that = this;
-        circle.animate({"fill": "#ffc", "stroke": "#f44", "r": this.radius * 3, "stroke-width": 10, "fill-opacity": 0.5, "stroke-opacity": 0.3}, 500, "bounce", function()
-        {
-            that.reset();
-            circle2.remove();
-            circle3.remove();
-        })
+        this.canvasObjs[0].hide();
+        this.dead = true;
+
+	var player = this;
+
+        subExplode.call(this, 0.9, 400, 0.2, 2.4);
+        subExplode.call(this, 1.2, 500, 0.3, 2.1);
+        subExplode.call(this, 0.0, 600, 1.0, 2.5, function() {
+		player.reset();
+	});
     },
 move:
     function()
     {
         if (this.dead)
             return;
-        
-        this.translate(this.dx,this.dy);
         
         var point = this.thrustPoint; 
         if (point)
@@ -318,15 +328,46 @@ move:
         
         this.dy += this.world.gravity;
         
-        if (this.pos.x - this.radius < 0 || this.pos.x + this.radius > this.world.paper.width)
+        var paperWidth = this.world.paper.width;
+        var paperHeight = this.world.paper.height;
+        
+        
+        if (this.pos.x - this.radius < 0 || this.pos.x + this.radius > paperWidth)
         {
             this.dx = -this.dx;
         }
-        if (this.pos.y - this.radius < 0 || this.pos.y + this.radius > this.world.paper.height )
+        if (this.pos.y - this.radius < 0 || this.pos.y + this.radius > paperHeight )
         {
             this.dy = -this.dy;
         }
+
+        this.translate(this.dx,this.dy);
         
+        var scrollX = this.x - paperWidth / 2;
+        var scrollY = this.y - paperHeight / 2;
+     
+        var $wnd = $(window);
+        var maxX = paperWidth - $wnd.width();
+        var maxY = paperHeight - $wnd.height();
+        
+        if (scrollX < 0)
+        {
+            scrollX = 0;
+        }
+        else if (scrollX > maxX)
+        {
+            scrollX = max;
+        }    
+        if (scrollY < 0)
+        {
+            scrollY = 0;
+        }
+        else if (scrollY > maxY)
+        {
+            scrollY = maxY;
+        }    
+        
+        $("#holder").scrollTop(scrollY).scrollLeft(scrollX);
     },
 thrust:
     function(point)

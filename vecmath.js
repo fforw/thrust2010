@@ -14,7 +14,7 @@ add:
     {
         if (typeof x === "number")
         {
-            return new Vector2D(this.x + v, this.y + y);
+            return new Vector2D(this.x + x, this.y + y);
         }
         else
         { 
