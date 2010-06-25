@@ -1,4 +1,4 @@
-var paper, paperWidth, paperHeight, world, player;
+var paper, world, player;
 (function($,window,undefined)
 {
 
@@ -15,15 +15,12 @@ function points()
 
 var mouseDown;
 
-var $wnd = $(window), world;
+var world;
 
 window.Thrust = {
 init:
     function()
     {
-        paperWidth = $wnd.width();
-        paperHeight = $wnd.height() - 40;
-        
         world = new World("teh_canvas");
         $.ajax({
             url: "cave.svg", 
@@ -36,17 +33,20 @@ init:
                     
                     var $elem = $(this);
                     
-                    if ($elem.attr("id") == "scene")
+                    var name = $elem.attr("inkscape:label");
+                    console.debug("name = %s", name);
+                    var worldBBox = new BBox();
+                    if (name === "#scene")
                     {
                         var pathData = $elem.attr("d");
-                        console.debug("scene path data = %s", pathData);
-                        poly = new Polygon(world, pathData, {stroke:"#ccc", fill:"#888a8e", "stroke-width": 2})
+                        world.createSubPaths(pathData);
+                        console.debug("world AABB: %o", world.box)
                     }
                     else                        
-                    if ($elem.attr("id") == "start")
+                    if (name === "#start")
                     {   
-                        playerX = (+$elem.attr("x")) + (+$elem.attr("width")) / 2;
-                        playerY = (+$elem.attr("y")) + (+$elem.attr("height")) / 2;
+                        playerX = (+$elem.attr("x"));
+                        playerY = (+$elem.attr("y"));
                         
                         world.base = new Base(world, playerX, playerY);
                         
@@ -59,6 +59,8 @@ init:
                     }
                     
                 });
+                
+                console.debug("World box: %s", world.box);
                 
                 player = new Player(world, playerX, playerY);
                 world.player = player;
@@ -76,7 +78,7 @@ init:
             var point = new Vector2D( ev.pageX , ev.pageY);
             //var pos = new Vector2D(player.x,player.y);
             //console.debug("point = %s, pos = %s", point,pos);
-            player.thrust( point.substract(world.offset));
+            player.thrust( point.add(world.offset));
             
         }
         
@@ -88,7 +90,7 @@ init:
         {
             if (ev.button == 2)
             {
-                player.shoot(new Vector2D(ev.pageX,ev.pageY).substract(world.offset));
+                player.shoot(new Vector2D(ev.pageX,ev.pageY).add(world.offset));
                 return false;
             }
             else
