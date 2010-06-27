@@ -17,10 +17,34 @@ var mouseDown;
 
 var world;
 
+function parseTransform($elem)
+{
+    var s = $elem.attr("transform");
+    
+    var m = /^translate\(\s*([0-9-]+)\s*,\s*([0-9-]+)\s*\)$/g.exec(s);
+    if (m)
+    {
+        return new Vector2D(+m[1], +m[2]);
+    }
+    return null;
+}
+
 window.Thrust = {
 init:
     function()
     {
+        if (!window.console)
+        {
+            window.console = {};
+            var dummy = function() {};
+            var names = "log debug error warn trace".split(" ");
+            for ( var i = 0, len = names.length; i < len; i++)
+            {
+                window.console[names[i]] = dummy;
+            } 
+        }
+    
+    
         world = new World("teh_canvas");
         $.ajax({
             url: "cave.svg", 
@@ -36,28 +60,43 @@ init:
                     var name = $elem.attr("inkscape:label");
                     console.debug("name = %s", name);
                     var worldBBox = new BBox();
-                    if (name === "#scene")
+                    switch(name)
                     {
-                        var pathData = $elem.attr("d");
-                        world.createSubPaths(pathData);
-                        console.debug("world AABB: %o", world.box)
+                        case "#scene": 
+                            var pathData = $elem.attr("d");
+                            world.createSubPaths(pathData);
+                            console.debug("world AABB: %o", world.box)
+                            break;
+                        case "#start":
+                            playerX = (+$elem.attr("x"));
+                            playerY = (+$elem.attr("y"));
+                            
+                            world.base = new Base(world, playerX, playerY);
+                            
+                            var pt = world.base.pos;
+                            
+                            console.debug("base player pt = %s", pt);
+                            
+                            playerX = pt.x + 25;
+                            playerY = pt.y - 25 ;
+                            break;
+                        case "#sentinel":
+                            var x = (+$elem.attr("sodipodi:cx"));
+                            var y = (+$elem.attr("sodipodi:cy"));
+
+                            var rx = (+$elem.attr("sodipodi:rx"));
+                            var ry = (+$elem.attr("sodipodi:ry"));
+                            
+                            var transform = parseTransform($elem);
+                            
+                            if (transform)
+                            {
+                                x += transform.x;
+                                y += transform.y;
+                            }
+                            new Sentinel(world, x,y,(rx + ry) / 2);
+                            break;
                     }
-                    else                        
-                    if (name === "#start")
-                    {   
-                        playerX = (+$elem.attr("x"));
-                        playerY = (+$elem.attr("y"));
-                        
-                        world.base = new Base(world, playerX, playerY);
-                        
-                        var pt = world.base.pos;
-                        
-                        console.debug("base player pt = %s", pt);
-                        
-                        playerX = pt.x + 25;
-                        playerY = pt.y - 5;
-                    }
-                    
                 });
                 
                 console.debug("World box: %s", world.box);

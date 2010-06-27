@@ -17,42 +17,6 @@
    sodipodi:docname="base.svg">
   <defs
      id="defs4">
-    <inkscape:path-effect
-       fuse_tolerance="0"
-       vertical_pattern="false"
-       prop_units="false"
-       tang_offset="0"
-       normal_offset="0"
-       spacing="0"
-       scale_y_rel="false"
-       prop_scale="1"
-       copytype="single_stretched"
-       pattern="m 443.71429,-107.42857 1,0"
-       is_visible="true"
-       id="path-effect2826"
-       effect="skeletal" />
-    <inkscape:path-effect
-       is_visible="true"
-       id="path-effect2824"
-       effect="spiro" />
-    <inkscape:path-effect
-       effect="skeletal"
-       id="path-effect2820"
-       is_visible="true"
-       pattern="m -657.14286,107.14286 1,0"
-       copytype="single_stretched"
-       prop_scale="1"
-       scale_y_rel="false"
-       spacing="0"
-       normal_offset="0"
-       tang_offset="0"
-       prop_units="false"
-       vertical_pattern="false"
-       fuse_tolerance="0" />
-    <inkscape:path-effect
-       effect="spiro"
-       id="path-effect2818"
-       is_visible="true" />
     <inkscape:perspective
        sodipodi:type="inkscape:persp3d"
        inkscape:vp_x="0 : 526.18109 : 1"
@@ -68,9 +32,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="11.2"
-     inkscape:cx="56.704831"
-     inkscape:cy="-10.271152"
+     inkscape:zoom="7.9195959"
+     inkscape:cx="59.140432"
+     inkscape:cy="10.961786"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -78,9 +42,7 @@
      inkscape:window-height="968"
      inkscape:window-x="0"
      inkscape:window-y="25"
-     inkscape:window-maximized="1"
-     showguides="true"
-     inkscape:guide-bbox="true" />
+     inkscape:window-maximized="1" />
   <metadata
      id="metadata7">
     <rdf:RDF>
@@ -96,11 +58,12 @@
   <g
      inkscape:label="Ebene 1"
      inkscape:groupmode="layer"
-     id="layer1">
+     id="layer1"
+     transform="translate(0,-1036.3622)">
     <path
-       style="fill:#000000;fill-rule:evenodd;stroke:none"
-       d="m 0.17875138,8.5182429 c 0.36277675,2.4126001 -0.49887673,5.5565001 6.67857792,6.6762001 7.1774547,1.1197 29.2087047,1.1387 36.3861647,0.021 7.17746,-1.1177 6.3162,-4.2636 6.678578,-6.6762001 -2.379915,-4.5327641 -8.837707,0.1542247 -14.042513,0.8741 -8.820582,1.1287141 -13.105522,0.9631431 -21.658284,-0.021 C 8.8710975,7.7031978 0.6824529,4.6146483 0.17875138,8.5182429 z"
-       id="path2816"
-       sodipodi:nodetypes="czzcccc" />
+       style="fill:#00ff00;fill-opacity:1;stroke:none"
+       d="m 0.12626905,1044.8219 3.16270845,-5.0606 7.2862375,-3.1782 6.488,3.1407 7.960945,1.0325 7.436151,-1.0371 7.012796,-3.1361 6.340311,3.1723 4.108634,5.0665 0,3.707 -2,3.7071 -45.795783,0 -1.99999995,-3.7071 0,-3.707 z"
+       id="rect2816"
+       sodipodi:nodetypes="cccccccccccccc" />
   </g>
 </svg>

@@ -6,7 +6,80 @@ function removeThis()
 {
     this.remove();
 }
+
+
+
+function parseSubPaths(pathData)
+{
+    var x=0, y=0, idx = 0;
+    var data = pathData.split(/[ ,]/);
+    var len = data.length;
     
+    var paths=[];
+    var points = [];
+    var lastCmd = "L";
+    
+    while (idx < len)
+    {
+        var cmd = data[idx++];
+     
+        if (cmd < "A")
+        {
+            cmd = lastCmd;
+            if (cmd == "M")
+            {
+                cmd = "L";
+            }
+            if (cmd == "m")
+            {
+                cmd = "l";
+            }
+            idx--;
+        }
+        else
+        {
+            lastCmd = cmd;
+        }
+        
+        var absolute = false;
+        if (cmd <= "a")
+        {
+            absolute = true;
+            cmd = String.fromCharCode(cmd.charCodeAt(0) + 32);
+        }
+        
+        switch(cmd)
+        {
+            case "m":
+                points = [];
+                x=0;
+                y=0;
+            case "l":
+                if (absolute)
+                {
+                    x = +data[idx++];
+                    y = +data[idx++];
+                }
+                else
+                {
+                    x += +data[idx++];
+                    y += +data[idx++];
+                }
+                points.push(new Vector2D(x,y));
+                break;
+            case "z":
+                paths.push(points);
+                points = [];
+                x=0;
+                y=0;
+                break;
+        }
+    
+    }
+    
+    return paths;
+}    
+
 function findClosestPointInCandidates(candidates, ptBullet)
 {
     //console.debug("candidates = %o, len = %s", candidates, candidates.length);
@@ -137,11 +210,8 @@ init:
             
         }
         
-        
-        
         canvas.width = $wnd.width();
         canvas.height = $wnd.height() - 40;
-        
         
         this.$canvas = $(canvas);
         this.ctx = canvas.getContext('2d');  
@@ -151,6 +221,18 @@ init:
         this.gravity = 0.00981;
         this.box = new BBox();
    },
+crateScenePaths:
+    function(pathData)
+    {
+        var pathPoints = parseSubPaths(pathData);
+       
+        for ( var i = 0, len = pathPoints.length; i < len; i++)
+        {
+            var pts = pathPoints[i];
+            var poly = new Polygon(this, pts);
+            this.box.extend(poly.box);
+        }
+    },
 addObject:
     function(obj)
     {
@@ -159,8 +241,16 @@ addObject:
 removeObject:
     function(obj)
     {
-        object.message("remove");
+        obj.message("remove");
+                
         removeFromArray(this.objects, obj);
+        
+        var box = obj.message("getBBox");
+        if (box)
+        {
+            this.rtree.remove(box, obj);
+        }
+        
     },
 createSubPaths:
     function(pathData)
@@ -242,45 +332,81 @@ ox:0,oy:0,
 step:
     function()
     {
-        this.ctx.save();
+        var ctx = this.ctx;
+        ctx.save();
         
         var canvasWidth = this.$canvas[0].width;
         var canvasHeight = this.$canvas[0].height;
         
-        this.ctx.clearRect(0,0,canvasWidth,canvasHeight);
+        ctx.clearRect(0,0,canvasWidth,canvasHeight);
         var offset = this.player.pos.substract( canvasWidth / 2, canvasHeight / 2);
         //console.debug(this.ox)
-        this.ctx.translate( -offset.x, -offset.y);
-        //this.ctx.scale( 0.5, 0.5);
+        ctx.translate( -offset.x, -offset.y);
+        //ctx.scale( 0.5, 0.5);
 
         this.offset = offset;
         
         var box = { x: offset.x, y: offset.y, w: canvasWidth, h: canvasHeight};
         
-        var inScreenObjects = this.rtree.search(box);
-        
-        for ( var i = 0, len = this.objects.length; i < len; i++)
+        for ( var i = 0; i < this.objects.length; i++)
         {
-            var obj = this.objects[i];
-            if (obj.type !== "line")
-            {
-                obj.message("move");
-                this.ctx.save();
-                obj.message("draw", this.ctx);
-                this.ctx.restore();
-            }
+            this.objects[i].message("move");
         }
         
-//        for ( var i = 0, len = this.bullets.length; i < len; i++)
-//        {
-//            var bullet = this.bullets[i];
-//            obj.message("move");
-//            ctx.save();
-//            obj.message("draw", ctx);
-//            ctx.restore();
-//        }
+        var inScreenObjects = this.rtree.search(box);
+        this.drawScene(inScreenObjects, 0);
+        this.drawScene(inScreenObjects, 1);
+        this.drawScene(inScreenObjects, 2);
+        ctx.restore();
         
-        this.ctx.restore();
+        ctx.save();
+        ctx.fillStyle = "#444";
+        var topLeft = new Vector2D(this.box.x, this.box.y).substract(this.offset);
+        
+        //console.debug("topLeft = %o", topLeft);
+        
+        if (topLeft.y > 0)
+        {
+            ctx.fillRect(0,0,canvasWidth, topLeft.y + 1);
+        }
+        
+        if (topLeft.x > 0)
+        {
+            ctx.fillRect(0,0, topLeft.x + 1, canvasHeight);
+        }
+
+        var botRgt = new Vector2D(this.box.x + this.box. w , this.box.y + this.box.h ).substract(this.offset);
+        
+        //console.debug("topLeft = %o", topLeft);
+        
+        if (botRgt.y < canvasHeight)
+        {
+            ctx.fillRect(0, botRgt.y - 1, canvasWidth, canvasHeight);
+        }
+
+        if (botRgt.x < canvasWidth)
+        {
+            ctx.fillRect(botRgt.x - 1, 0, canvasWidth, canvasHeight);
+        }
+        
+        ctx.restore();
+        
+        
+    },
+drawScene:
+    function(objects, zIndex)
+    {
+        for ( var i = 0, len = objects.length; i < len; i++)
+        {
+            var obj = objects[i];
+            var ctx = this.ctx;
+            if (obj.type !== "line" && obj.zIndex == zIndex)
+            {
+                ctx.save();
+                obj.message("draw", ctx);
+                ctx.restore();
+            }
+        }
     }
 });    
     
@@ -313,34 +439,54 @@ translate:
 });    
 
 this.Polygon = GameObject.extend({
-    init: function(world, points)
+    init: function(world, points, noRegister)
     {
+        if (typeof points === "string")
+        {
+            // parse and use first sub path
+            points = parseSubPaths(points)[0];
+            console.debug("points = %o", points)
+        }
+    
         this._super(world);
         
-        this.pos = new Vector2D(0,0);
+        this.pos = this.pos || new Vector2D(0,0);
         this.points = points;
-        this.registerLines();
+        this.zIndex = 1;
+        
+        if (!noRegister)
+        {
+            this.registerLines();
+        }
     },
 draw:
-    function(ctx)
+    function(ctx, debug)
     {
-        //console.debug("draw polygon: %o", this.points);
+        if (debug)
+            console.debug("draw polygon: %o", this.points);
+        
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        
         var pt0, pts = this.points;
-        ctx.fillStyle = "#444";
-        ctx.strokeStyle = "#eee";
+        ctx.fillStyle = this.fillColor || "#444";
+        ctx.strokeStyle = this.strokeColor || "#eee";
         pt0 = pts[0];
         ctx.beginPath();
         ctx.moveTo(pt0.x, pt0.y);
-        //console.debug("ctx.moveTo( %d, %d);",pt0.x, pt0.y);
+        if (debug)
+            console.debug("ctx.moveTo( %d, %d);",pt0.x, pt0.y);
         for ( var i = 1, len = pts.length; i < len; i++)
         {
             var pt = pts[i];
             ctx.lineTo(pt.x,pt.y);
-            //console.debug("ctx.lineTo(%d,%d);",pt.x,pt.y);
+            if (debug)
+                console.debug("ctx.lineTo(%d,%d);",pt.x,pt.y);
         }
         ctx.lineTo(pt0.x,pt0.y);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
     },
 //move:
 //    function() {
@@ -416,8 +562,12 @@ init: function(world,initX,initY)
     {    
         this._super(world);
         this.initX = initX;
-        this.initY = initY;
+        this.initY = initY;        
         this.reset();
+        this.type = "player";
+        this.zIndex = 2;
+        
+        this.world.rtree.insert(this.message("getBBox"), this);        
     },
 reset:
     function()
@@ -431,7 +581,7 @@ reset:
         this.dx = 0;
         this.dy = 0;
         this.dead = false;
-        this.radius = 10;
+        this.radius = 15;
         this.thrustPower = 40;
         
 //        this.canvasObjs[0].attr({
@@ -442,29 +592,26 @@ reset:
 //            "cy" : this.pos.y});
         
     },
-explode : 
-    function()
+explode: 
+    function(pos)
     {
-
-        //var paper = this.world.paper;
-
-        //this.canvasObjs[0].remove();
-        this.dead = true;
-
-        var player = this;
-        subExplode.call(this, 0.9, 400, 0.2, 2.4);
-        subExplode.call(this, 1.2, 500, 0.3, 2.1);
-        subExplode.call(this, 0.0, 600, 1.0, 2.5, function() {
-		player.reset();
-	});
+        if (!this.dead)
+        {
+            this.dead = true;
+            
+            new Explosion(this.world, pos || this.pos.clone(), 15, this.world.player.reset, player);
+        }
     },
 draw:
     function(ctx)
     {
-    ctx.beginPath();
-    ctx.fillStyle="#00f"
-        ctx.arc(this.pos.x, this.pos.y, 15, 0, Math.PI*2, false);
-    ctx.fill();
+        if (!this.dead)
+        {
+            ctx.beginPath();
+            ctx.fillStyle = "#008";
+            ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2, false);
+            ctx.fill();
+        }
     },    
 getBBox:
     function()
@@ -519,13 +666,14 @@ move:
                     
                     if (distance < this.radius)
                     {
-                        player.explode();
+                        this.explode(closest);
+                        break;
                     }                    
                 }
             }
         }
         
-        var ptDock = this.world.base.pos.add(25,-3);
+        var ptDock = this.world.base.pos.add(25,-23);
         
         //mark(this.world, this.pos, "pOrigin")
         
@@ -555,13 +703,10 @@ move:
         var worldHeight = this.world.height;
         var worldBox = this.world.box;
         
-        if (this.pos.x - this.radius < worldBox.x || this.pos.x + this.radius > worldBox.x + worldBox.w )
+        if (this.pos.x - this.radius < worldBox.x || this.pos.x + this.radius > worldBox.x + worldBox.w || 
+            this.pos.y - this.radius < this.world.box.y || this.pos.y + this.radius > worldBox.y + worldBox.h )
         {
-            this.dx = -this.dx;
-        }
-        if (this.pos.y - this.radius < this.world.box.y || this.pos.y + this.radius > worldBox.y + worldBox.h )
-        {
-            this.dy = -this.dy;
+            this.explode();
         }
 
         this.translate(this.dx,this.dy);
@@ -575,7 +720,16 @@ shoot:
     function(point)
     {
         var angle = point.angleTo(this.pos);
-        new Bullet(this.world, this.pos.clone(), angle);
+        new Bullet(this.world, this.pos.add( 
+                this.dx + this.radius * Math.cos(angle), 
+                this.dy + this.radius * Math.sin(angle)), angle);
+    },
+translate:
+    function(x,y)
+    {
+        this.world.rtree.remove(this.message("getBBox"), this);
+        this._super(x,y);
+        this.world.rtree.insert(this.message("getBBox"), this);
     }
 });    
     
@@ -589,9 +743,12 @@ init:
         
         this._super(world);
         this.pos = pt;
+        this.zIndex = 2;
         
         
         this.ricochet = 5;
+        this.type = "bullet";
+        this.world.rtree.insert(this.message("getBBox"), this);
     },
 draw:
     function(ctx)
@@ -615,13 +772,24 @@ move:
     function()
     {
         var newPos = this.pos.clone();
+
+        var worldBox = this.world.box;
+        
+        if (this.pos.x - this.radius < worldBox.x || this.pos.x + this.radius > worldBox.x + worldBox.w)
+        {
+            this.dx = -this.dx;
+        }
+        if ( this.pos.y - this.radius < this.world.box.y || this.pos.y + this.radius > worldBox.y + worldBox.h )
+        {
+            this.dy = -this.dy;
+        }
         
         newPos.x += this.dx;
         newPos.y += this.dy;
         
         if (!this.ricochet)
         {
-            world.removeObject(this);
+            this.world.removeObject(this);
         }
         else
         {
@@ -633,6 +801,21 @@ move:
             
             var candidates = this.world.rtree.search(box);
 
+            for ( var i = 0, len = candidates.length; i < len; i++)
+            {
+                var obj = candidates[i];
+                switch(obj.type)
+                {
+                    case "sentinel":
+                    case "player":
+                        if (obj.pos.substract(this.pos).length() < obj.radius * 0.95)
+                        {
+                            obj.explode(this.pos.clone());
+                        }
+                        break;
+                }
+            }
+            
             var best = findClosestPointInCandidates(candidates, ptBullet);
                         
             if (best.distance < this.radius)
@@ -706,33 +889,44 @@ move:
             
             this.translate(delta.x, delta.y);
         }
+    },
+translate:
+    function(x,y)
+    {
+        this.world.rtree.remove(this.message("getBBox"), this);
+        this._super(x,y);
+        this.world.rtree.insert(this.message("getBBox"), this);
     }
 });
 
-this.Base = GameObject.extend({
+this.Base = Polygon.extend({
 init:
     function(world, x, y)
     {
         this.pos = new Vector2D(x,y);
+        this.fillColor = "#5a6";
         
         var candidates = world.rtree.search({x: x, y:y, w: 50, h:100});
         var best = findClosestPointInCandidates(candidates, this.pos);
-        
+
         console.debug("best match = %o", best);
         
         this.pos.x = best.closest.x - 25;
-        this.pos.y = best.closest.y - 16;
+        this.pos.y = best.closest.y;
         
-//        var path = world.paper.path("m 0.17875138,8.5182429 c 0.36277675,2.4126001 -0.49887673,5.5565001 6.67857792,6.6762001 7.1774547,1.1197 29.2087047,1.1387 36.3861647,0.021 7.17746,-1.1177 6.3162,-4.2636 6.678578,-6.6762001 -2.379915,-4.5327641 -8.837707,0.1542247 -14.042513,0.8741 -8.820582,1.1287141 -13.105522,0.9631431 -21.658284,-0.021 C 8.8710975,7.7031978 0.6824529,4.6146483 0.17875138,8.5182429 z")
-//            .attr({fill:"#080", stroke: "#0c0"}).translate( this.pos.x, this.pos.y);
-        this._super(world);
+        var pathData = "m 0 0 3.16270845,-5.0606 7.2862375,-3.1782 6.488,3.1407 7.960945,1.0325 7.436151,-1.0371 7.012796,-3.1361 6.340311,3.1723 4.108634,5.0665 0,3.707 -2,3.7071 -45.795783,0 -1.99999995,-3.7071 0,-3.707 z";
+        this._super(world, pathData, true);        
+        this.zIndex = 0;
+        
+        this.world.rtree.insert(this.message("getBBox"), this);        
     },
-draw:
-    function(ctx)
+getBBox:
+    function()
     {
-        ctx.beginPath();
-        ctx.moveTo(0.17875138,8.5182429);
-        ctx.curveTo()
+        var box = this.pos.clone();
+        box.w = 50;
+        box.h = 16;
+        return box;
     }
 });
 
@@ -745,6 +939,141 @@ draw:
 //    }
 //    return markers[name];
 //}
+
+this.Sentinel = GameObject.extend({
+init:
+    function(world,x,y,r)
+    {
+    console.debug("create Sentinel( world, %d, %d, %d)", x, y, r);
+        this.pos = new Vector2D(x,y);
+        this.radius = 15;
+        this.observationRadius = r;
+        this.reloadTime = 150;
+        this.reload = 0;
+        this._super(world);
+        this.type = "sentinel";
+        this.zIndex = 0;
+        this.dead = false;
+        
+        this.world.rtree.insert(this.getBBox(), this);        
+    },
+explode: 
+    function(pos)
+    {
+        if (!this.dead)
+        {
+            this.dead = true;
+            var that = this;
+            new Explosion(this.world, pos || this.pos.clone(), 15, function() { that.world.removeObject(that); } );
+        }
+    },
+move:
+    function()
+    {
+        if (!this.reload && !this.dead)
+        {
+            var v = this.world.player.pos.substract(this.pos);
+            if ( v.length() < this.observationRadius)
+            {
+                var angle = this.world.player.pos.angleTo(this.pos);
+                new Bullet(this.world, this.pos.add(this.radius * Math.cos(angle), this.radius * Math.sin(angle)), angle);
+                this.reload = this.reloadTime;
+            }
+        }
+        else
+        {
+            this.reload--;
+        }
+    },
+draw:
+    function(ctx)
+    {
+        ctx.beginPath();
+        ctx.fillStyle="#484850";
+        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2, false);
+        ctx.fill();
+        ctx.stroke();
+    },
+getBBox:
+    function()
+    {
+        var r = this.radius;
+        var box = this.pos.substract(r,r);
+        box.w = box.h = r * 2;
+        console.debug("sentinel at %o", box);
+        return box;
+    }
+});
+
+this.Explosion = GameObject.extend({
+init:
+    function(world, pos, r, fn, ctx)
+    {
+        this.pos = pos;
+        this._super(world);
+        this.radius = r;
+        this.callback = fn;
+        this.ctx = ctx;
+        this.count = 3;
+        this.zIndex = 2;
+        
+        this.subs = [];
+        
+        var angle = 0.0;
+        var aMax = Math.PI * 2 / this.count;
+        for (var i = this.count - 1; i >= 0; i--)
+        {
+            var off = this.radius * 1.3 - r * 0.9;
+            angle += Math.random() * aMax;
+            this.subs.push({
+                r: 0, 
+                dr: Math.random() * 0.5 + 1, 
+                rmax: r * 1.5, x: Math.cos(angle) * off , 
+                y: Math.sin(angle) * off,
+                fillStyle: "#fec"});
+            r *= 0.9;
+        }
+        
+        this.count = 100;
+        this.world.rtree.insert(this.getBBox(), this);        
+    },
+draw:
+    function(ctx)
+    {
+        for ( var i = 0, len = this.subs.length; i < len; i++)
+        {
+             var sub = this.subs[i];
+             ctx.beginPath();
+             ctx.fillStyle = sub.fillStyle;
+             ctx.arc(
+                 this.pos.x + sub.x,  
+                 this.pos.y + sub.y,  
+                 sub.r, 0, Math.PI*2, false);
+             ctx.fill();
+             
+             sub.r += sub.dr;
+             
+             if (sub.r > sub.rmax)
+             {
+                 sub.dr = -sub.dr;
+             }
+        }
+        
+        if (this.count-- <= 0)
+        {
+            this.world.removeObject(this);
+            this.callback.call(this.ctx || this);
+        }
+    },
+getBBox:
+    function()
+    {
+        var r = this.radius;
+        var box = this.pos.substract(r,r);
+        box.w = box.h = r*2;
+        return box;
+    }
+});
 
 })();
 
