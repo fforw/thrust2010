@@ -7,7 +7,12 @@ function removeThis()
     this.remove();
 }
 
-
+function outerBox(pos,r)
+{
+    var box = pos.substract(r,r);
+    box.w = box.h = r*2;
+    return box;
+}
 
 function parseSubPaths(pathData)
 {
@@ -357,9 +362,16 @@ step:
         this.drawScene(inScreenObjects, 0);
         this.drawScene(inScreenObjects, 1);
         this.drawScene(inScreenObjects, 2);
-        ctx.restore();
         
+        ctx.restore();
+        this.drawOutsideBox(this.ctx, canvasWidth, canvasHeight);
+        
+    },
+drawOutsideBox:
+    function(ctx, canvasWidth, canvasHeight)
+    {
         ctx.save();
+        ctx.globalCompositeOperation = "destination-over";
         ctx.fillStyle = "#444";
         var topLeft = new Vector2D(this.box.x, this.box.y).substract(this.offset);
         
@@ -390,8 +402,6 @@ step:
         }
         
         ctx.restore();
-        
-        
     },
 drawScene:
     function(objects, zIndex)
@@ -567,6 +577,12 @@ init: function(world,initX,initY)
         this.type = "player";
         this.zIndex = 2;
         
+        this.tractorThreshold = 0.4;
+        this.tractorMax = 50;
+        this.tractorPow = 3.5;
+        this.tractorPull = 0.005;
+        this.weight= 2300;
+        
         this.world.rtree.insert(this.message("getBBox"), this);        
     },
 reset:
@@ -582,7 +598,7 @@ reset:
         this.dy = 0;
         this.dead = false;
         this.radius = 15;
-        this.thrustPower = 40;
+        this.thrustPower = 92000;
         
 //        this.canvasObjs[0].attr({
 //            "fill": "#00f", 
@@ -607,6 +623,16 @@ draw:
     {
         if (!this.dead)
         {
+            if (this.thrusterPos)
+            {
+                ctx.beginPath();
+                ctx.fillStyle="#ffc";
+                ctx.strokeStyle="#c00";
+                ctx.arc(this.thrusterPos.x, this.thrusterPos.y, 3, 0, Math.PI*2, false);
+                ctx.fill();
+                ctx.stroke();
+            }
+
             ctx.beginPath();
             ctx.fillStyle = "#008";
             ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2, false);
@@ -616,10 +642,7 @@ draw:
 getBBox:
     function()
     {
-        var box = this.pos.substract(15,15);
-        box.w = 30; 
-        box.h = 30;
-        return box;
+        return outerBox(this.pos, this.radius);
     },    
 move:
     function()
@@ -635,8 +658,29 @@ move:
             
             var angle = Math.atan2(deltaY, deltaX);
             //console.debug("angle = %d", angle );
-            this.dx += Math.cos(angle) * this.thrustPower / 1000;
-            this.dy += Math.sin(angle) * this.thrustPower / 1000;
+
+            var weight = this.weight;
+            var connected = this.connected;
+            if (connected)
+            {
+                weight += this.connected.weight;
+            }
+
+            var cos = Math.cos(angle);
+            var sin = Math.sin(angle);
+            
+            var ddx = cos * this.thrustPower / weight / 1000;
+            var ddy = sin * this.thrustPower / weight / 1000;
+
+            if (connected)
+            {
+                var v = new Vector2D(ddx,ddy).projectOnto(this.pos.substract(connected.pos));
+                connected.dx += v.x;
+                connected.dy += v.y;
+            }
+            
+            this.dx += ddx;
+            this.dy += ddy;
         }
         
         var box = this.message("getBBox");
@@ -710,6 +754,9 @@ move:
         }
 
         this.translate(this.dx,this.dy);
+
+        var dist = this.radius + 1;
+        this.thrusterPos = this.thrustPoint ? this.pos.substract(cos * dist, sin * dist) : null;
     },
 thrust:
     function(point)
@@ -737,9 +784,9 @@ this.Bullet = GameObject.extend({
 init:
     function(world, pt, angle)
     {
-        this.dx = Math.cos(angle) * 4;
-        this.dy = Math.sin(angle) * 4;
-        this.radius = 2;
+        this.dx = Math.cos(angle) * 3;
+        this.dy = Math.sin(angle) * 3;
+        this.radius = 3;
         
         this._super(world);
         this.pos = pt;
@@ -763,10 +810,7 @@ draw:
 getBBox:
     function()
     {
-        var box = this.pos.substract(2,2);
-        box.w = 4; 
-        box.h = 4;
-        return box;
+        return outerBox(this.pos, 2);
     },    
 move:
     function()
@@ -906,13 +950,14 @@ init:
         this.pos = new Vector2D(x,y);
         this.fillColor = "#5a6";
         
-        var candidates = world.rtree.search({x: x, y:y, w: 50, h:100});
+        var candidates = world.rtree.search({x: x, y:y, w: 50, h:150});
         var best = findClosestPointInCandidates(candidates, this.pos);
 
         console.debug("best match = %o", best);
         
-        this.pos.x = best.closest.x - 25;
-        this.pos.y = best.closest.y;
+        this.pos.x = best.closest.x - 50;
+        this.pos.y = best.closest.y - 4;
+        this.type = "base";
         
         var pathData = "m 0 0 3.16270845,-5.0606 7.2862375,-3.1782 6.488,3.1407 7.960945,1.0325 7.436151,-1.0371 7.012796,-3.1361 6.340311,3.1723 4.108634,5.0665 0,3.707 -2,3.7071 -45.795783,0 -1.99999995,-3.7071 0,-3.707 z";
         this._super(world, pathData, true);        
@@ -946,7 +991,7 @@ init:
     {
     console.debug("create Sentinel( world, %d, %d, %d)", x, y, r);
         this.pos = new Vector2D(x,y);
-        this.radius = 15;
+        this.radius = 10;
         this.observationRadius = r;
         this.reloadTime = 150;
         this.reload = 0;
@@ -997,11 +1042,7 @@ draw:
 getBBox:
     function()
     {
-        var r = this.radius;
-        var box = this.pos.substract(r,r);
-        box.w = box.h = r * 2;
-        console.debug("sentinel at %o", box);
-        return box;
+        return outerBox(this.pos, this.radius);
     }
 });
 
@@ -1029,8 +1070,7 @@ init:
                 r: 0, 
                 dr: Math.random() * 0.5 + 1, 
                 rmax: r * 1.5, x: Math.cos(angle) * off , 
-                y: Math.sin(angle) * off,
-                fillStyle: "#fec"});
+                y: Math.sin(angle) * off});
             r *= 0.9;
         }
         
@@ -1043,13 +1083,16 @@ draw:
         for ( var i = 0, len = this.subs.length; i < len; i++)
         {
              var sub = this.subs[i];
-             ctx.beginPath();
-             ctx.fillStyle = sub.fillStyle;
-             ctx.arc(
-                 this.pos.x + sub.x,  
-                 this.pos.y + sub.y,  
-                 sub.r, 0, Math.PI*2, false);
-             ctx.fill();
+             if (sub.r > 0)
+             {
+                 ctx.beginPath();
+                 ctx.fillStyle = "#fc4";
+                 ctx.arc(
+                     this.pos.x + sub.x,  
+                     this.pos.y + sub.y,  
+                     sub.r, 0, Math.PI*2, false);
+                 ctx.fill();
+             }
              
              sub.r += sub.dr;
              
@@ -1059,7 +1102,7 @@ draw:
              }
         }
         
-        if (this.count-- <= 0)
+        if (this.count-- <= 0 && this.callback)
         {
             this.world.removeObject(this);
             this.callback.call(this.ctx || this);
@@ -1068,10 +1111,165 @@ draw:
 getBBox:
     function()
     {
-        var r = this.radius;
-        var box = this.pos.substract(r,r);
-        box.w = box.h = r*2;
-        return box;
+        return outerBox(this.pos, this.radius);
+    }
+});
+
+this.Cargo = GameObject.extend({
+init:
+    function(world, x, y)
+    {
+        this.pos = new Vector2D(x,y);
+        this.connected = false;
+        this.resting = true;
+        this.atBase = -1;
+        this.radius = 8;
+        
+        this._super(world);
+        this.dx = 0;
+        this.dy = 0;
+        this.type = "cargo";
+        this.zIndex = 2;
+        this.weight = 100;
+        this.world.rtree.insert(this.getBBox(), this);
+    },
+move:
+    function()
+    {
+        var player = this.world.player;
+        if (this.connected)
+        {
+            var vPlayer = player.pos.substract(this.pos);
+            
+            var len = vPlayer.length();
+            
+            var tractorDist = len / player.tractorMax;
+            if (tractorDist >= 1)
+            {
+                // rotate vector to player by 90 degrees
+                var vRot = new Vector2D(vPlayer.y, -vPlayer.x);
+
+                // project movement vector onto perpendicular vPlayer
+                var dNew = new Vector2D(this.dx,this.dy).projectOnto(vRot).multiply(0.9);
+                this.dx = dNew.x;
+                this.dy = dNew.y;
+                
+                var vPull = vPlayer.multiply( (len - player.tractorMax) / len);
+
+                this.dx += vPull.x;
+                this.dy += vPull.y;
+                
+                var massRel = this.weight / (this.weight + player.weight);
+                player.dx -= vPull.x * massRel;
+                player.dy -= vPull.y * massRel;
+            }
+        }
+        
+        if (!this.resting)
+        {
+            this.dy += this.world.gravity;
+            this.translate( this.dx, this.dy);
+            
+            var ptDock = this.world.base.pos.add(25,-12);
+            var dist = ptDock.substract(this.pos).length();
+            if (dist < this.radius * 1.5)
+            {
+                this.resting = true;
+                this.connected = false;
+                this.atBase = 100;
+                player.connected = null;
+                return;
+            }
+            
+            if (player.pos.substract(this.pos).length() < player.radius + this.radius)
+            {
+                player.explode();
+                this.explode();
+                return;
+            }
+            
+            var candidates = this.world.rtree.search(this.getBBox());
+                        
+            var best = findClosestPointInCandidates(candidates, this.pos);
+            var pt = best.closest;
+            if (pt && pt.substract(this.pos).length() < this.radius)
+            {
+                this.explode();
+                return;
+            }
+            
+            var worldBox = this.world.box;
+            
+            if (this.pos.x - this.radius < worldBox.x || this.pos.x + this.radius > worldBox.x + worldBox.w || 
+                this.pos.y - this.radius < this.world.box.y || this.pos.y + this.radius > worldBox.y + worldBox.h )
+            {
+                this.explode();
+            }
+            
+        }
+    },
+remove:
+    function()
+    {
+        var world = this.world;
+        var player = world.player;
+        
+        if (player.connected === this)
+        {
+            player.connected = null;
+        }
+    },
+explode:
+    function()
+    {
+        this.world.removeObject(this);
+        new Explosion(this.world, this.pos.clone(), this.radius);
+    },
+getBBox:
+    function()
+    {
+        return outerBox(this.pos, this.radius);
+    },
+translate:
+    function(x,y)
+    {
+        this.world.rtree.remove(this.getBBox(), this);
+        this._super(x,y);
+        this.world.rtree.insert(this.getBBox(), this);
+    },
+draw:
+    function(ctx)
+    {
+        
+        if (this.connected)
+        {
+            var pos= this.world.player.pos;
+            
+            var delta = pos.substract(this.pos);
+            var delta = delta.multiply(this.world.player.radius / delta.length());
+            
+            pos = pos.substract(delta);
+            
+            ctx.strokeStyle = "#fff";
+            ctx.beginPath();
+            ctx.moveTo(player.pos.x, player.pos.y);
+            ctx.lineTo(this.pos.x, this.pos.y);
+            ctx.stroke();
+        }
+        
+        ctx.beginPath();
+        ctx.fillStyle = this.connected ? "#c80" : "#080";
+        
+        if (this.atBase > 0)
+        {
+            ctx.fillStyle = "#0f0";
+            if (--this.atBase == 0)
+            {
+                this.world.removeObject(this);
+            }
+        }
+        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2, false);       
+        ctx.fill();
     }
 });
 
