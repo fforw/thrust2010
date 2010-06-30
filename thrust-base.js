@@ -1150,7 +1150,7 @@ move:
                 var vRot = new Vector2D(vPlayer.y, -vPlayer.x);
 
                 // project movement vector onto perpendicular vPlayer
-                var dNew = new Vector2D(this.dx,this.dy).projectOnto(vRot).multiply(0.9);
+                var dNew = new Vector2D(this.dx,this.dy).projectOnto(vRot);
                 this.dx = dNew.x;
                 this.dy = dNew.y;
                 
