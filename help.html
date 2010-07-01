@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Thrust - canvas game</title>
+<style type="text/css">
+body,div
+{
+	margin:0;
+	padding: 0;
+	background: #000;
+	color: #f0f0f0;
+}
+
+#holder
+{	
+	width: 100%;
+	margin: 0 auto;
+	background: #080808;
+	overflow: hidden;
+}
+
+#header
+{
+	height: 40px;
+}
+
+#header ul,#header li
+{
+	display: inline
+}
+
+#header h1
+{
+	font-size: 32px;
+	line-height: 40px;
+	display: inline;
+	color: #fff;
+}
+span.nav
+{
+	font-size: 0.9em;
+	font-color: #ddd;
+	float: right;
+	line-height: 40px;
+}
+img
+{
+	margin: 2em 2ex;
+	float: left;
+}
+p
+{
+	float: left;
+	clear left;
+	width: 60ex;
+}
+em
+{
+	font-weight: bold;
+	color: #cfc;
+}
+em.warn
+{
+	color: #fcc;
+}
+</style>
+
+<script type="text/javascript" src="rtree.js">
+</script>
+<script type="text/javascript" src="jquery-1.4.2.min.js">
+</script>
+<script type="text/javascript" src="Class.js">
+</script>
+<script type="text/javascript" src="vecmath.js">
+</script>
+<script type="text/javascript" src="thrust-base.js">
+</script>
+<script type="text/javascript" src="thrust.js">
+</script>
+
+</head>
+<body>
+<div id="header">
+	<h1>Thrust 2010 Instructions</h1> 
+</div>
+<img src="help.png"/>
+<p>
+	Your are that blue sphere ship on that green thingy which is your base. The base is your safe point where you can rest.
+	<em class="warn">Touching a shot, the active cargo or a wall will destroy you</em>.
+</p>
+<p>
+	The small green circles are cargo that must be <em>carried back to the base</em>. This is done by flying next to the sphere and
+	pressing "T" to activate the <em>tractor beam</em>. While the sphere is inactive, you can touch it with your ship without being destroyed. 
+	Once grabbed with the tractor beam the cargo must be brought near to the base to be absorbed.
+</p>
+<p>
+	The sentinels will shoot at you when they see you. You can <em>shoot back</em> by clicking the <em>right mouse button</em>. Don't get shot und don't
+	shoot yourself.		
+</p>
+<p>
+	You can <em>fly around</em> by <em>clicking the left mouse button</em> next to your sphere ship. The ship will accelerate away from the left click. 
+</p>
+<p>
+	The greyish area around the right cargo shows the aproximate <em>tractor beam distance</em>. 
+</p>
+</body>
+</html>

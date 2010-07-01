@@ -7,6 +7,19 @@ function removeThis()
     this.remove();
 }
 
+function applyStyle(ctx, style)
+{
+    for (var prop in style)
+    {
+        var v = style[prop]
+        if ( v !== "none")
+        {                
+            ctx[prop] = v;
+            //console.debug("Set prop  %s to %o", prop, v);
+        }
+    }
+}
+
 function outerBox(pos,r)
 {
     var box = pos.substract(r,r);
@@ -225,18 +238,34 @@ init:
         this.rtree = new RTree(10);
         this.gravity = 0.00981;
         this.box = new BBox();
+        
+        this.gravs = [];
    },
-crateScenePaths:
-    function(pathData)
+addGravSource:
+    function(grav)
     {
-        var pathPoints = parseSubPaths(pathData);
-       
-        for ( var i = 0, len = pathPoints.length; i < len; i++)
-        {
-            var pts = pathPoints[i];
-            var poly = new Polygon(this, pts);
-            this.box.extend(poly.box);
-        }
+       this.gravs.push(grav);
+    },
+doLocalGravity:
+    function(obj)
+    {
+       var inLocal = false;
+       for ( var i = 0, len = this.gravs.length; i < len; i++)
+       {
+            var grav = this.gravs[i];
+            var box = grav.getBBox();
+            if (obj.pos.x >= box.x && obj.pos.x < box.x + box.w &&  
+                obj.pos.y >= box.y && obj.pos.y < box.y + box.h)
+            {
+                grav.doGravity(obj);
+                inLocal = true;
+                break;
+            }
+       }
+       if (!inLocal)
+       {
+           obj.dy += this.gravity;
+       }
     },
 addObject:
     function(obj)
@@ -258,7 +287,7 @@ removeObject:
         
     },
 createSubPaths:
-    function(pathData)
+    function(pathData,style)
     {
         var x=0, y=0, idx = 0;
         var data = pathData.split(/[ ,]/);
@@ -317,7 +346,7 @@ createSubPaths:
                     points.push(new Vector2D(x,y));
                     break;
                 case "z":
-                    var poly = new Polygon(this,points);
+                    var poly = new Polygon(this,points, false, style);
                     paths.push(poly);
                     
                     this.box.extend(poly.box);
@@ -355,8 +384,14 @@ step:
         
         for ( var i = 0; i < this.objects.length; i++)
         {
-            this.objects[i].message("move");
+            var obj = this.objects[i];
+            obj.message("move");
+            if (obj.gravityBound)
+            {
+                this.doLocalGravity(obj);
+            }
         }
+        
         
         var inScreenObjects = this.rtree.search(box);
         this.drawScene(inScreenObjects, 0);
@@ -371,7 +406,7 @@ drawOutsideBox:
     function(ctx, canvasWidth, canvasHeight)
     {
         ctx.save();
-        ctx.globalCompositeOperation = "destination-over";
+        //ctx.globalCompositeOperation = "destination-over";
         ctx.fillStyle = "#444";
         var topLeft = new Vector2D(this.box.x, this.box.y).substract(this.offset);
         
@@ -449,7 +484,7 @@ translate:
 });    
 
 this.Polygon = GameObject.extend({
-    init: function(world, points, noRegister)
+    init: function(world, points, noRegister, style)
     {
         if (typeof points === "string")
         {
@@ -463,6 +498,7 @@ this.Polygon = GameObject.extend({
         this.pos = this.pos || new Vector2D(0,0);
         this.points = points;
         this.zIndex = 1;
+        this.style = style || { "strokeStyle" : "#eee", fillStyle: "#444"};
         
         if (!noRegister)
         {
@@ -479,8 +515,8 @@ draw:
         ctx.translate(this.pos.x, this.pos.y);
         
         var pt0, pts = this.points;
-        ctx.fillStyle = this.fillColor || "#444";
-        ctx.strokeStyle = this.strokeColor || "#eee";
+        applyStyle(ctx, this.style);
+        
         pt0 = pts[0];
         ctx.beginPath();
         ctx.moveTo(pt0.x, pt0.y);
@@ -495,7 +531,15 @@ draw:
         }
         ctx.lineTo(pt0.x,pt0.y);
         ctx.closePath();
-        ctx.fill();
+        
+        if (this.style.fillStyle !== "none")
+        {
+            ctx.fill();
+        }
+        if (this.style.strokeStyle !== "none")
+        {
+            ctx.stroke();
+        }
         ctx.restore();
     },
 //move:
@@ -578,10 +622,11 @@ init: function(world,initX,initY)
         this.zIndex = 2;
         
         this.tractorThreshold = 0.4;
-        this.tractorMax = 50;
+        this.tractorMax = 64;
         this.tractorPow = 3.5;
         this.tractorPull = 0.005;
         this.weight= 2300;
+        this.gravityBound = true;
         
         this.world.rtree.insert(this.message("getBBox"), this);        
     },
@@ -674,11 +719,17 @@ move:
 
             if (connected)
             {
-                var v = new Vector2D(ddx,ddy).projectOnto(this.pos.substract(connected.pos));
-                connected.dx += v.x;
-                connected.dy += v.y;
-            }
+                // tractor beam from the cargo to the player
+                var vTractor = this.pos.substract(connected.pos);
             
+                if (vTractor.isSameDirection(ddx) &&  vTractor.length() > this.tractorMax * 0.98)
+                {
+                    var v = new Vector2D(ddx,ddy).projectOnto(vTractor);
+                    connected.dx += v.x;
+                    connected.dy += v.y;
+                }
+            }
+                
             this.dx += ddx;
             this.dy += ddy;
         }
@@ -725,10 +776,12 @@ move:
         
         if ( distToBase > 20)
         {        
-            this.dy += this.world.gravity;
+            //this.dy += this.world.gravity;
+            this.gravityBound = true;
         }
         else
         {
+            this.gravityBound = false;
             if (!this.thrustPoint)
             {
                 this.dx *= 0.8;                
@@ -962,6 +1015,7 @@ init:
         var pathData = "m 0 0 3.16270845,-5.0606 7.2862375,-3.1782 6.488,3.1407 7.960945,1.0325 7.436151,-1.0371 7.012796,-3.1361 6.340311,3.1723 4.108634,5.0665 0,3.707 -2,3.7071 -45.795783,0 -1.99999995,-3.7071 0,-3.707 z";
         this._super(world, pathData, true);        
         this.zIndex = 0;
+        this.style = { "strokeStyle" : "none", fillStyle: "#5a6"};
         
         this.world.rtree.insert(this.message("getBBox"), this);        
     },
@@ -1144,6 +1198,8 @@ move:
             var len = vPlayer.length();
             
             var tractorDist = len / player.tractorMax;
+            
+            
             if (tractorDist >= 1)
             {
                 // rotate vector to player by 90 degrees
@@ -1151,6 +1207,7 @@ move:
 
                 // project movement vector onto perpendicular vPlayer
                 var dNew = new Vector2D(this.dx,this.dy).projectOnto(vRot);
+                
                 this.dx = dNew.x;
                 this.dy = dNew.y;
                 
@@ -1158,6 +1215,7 @@ move:
 
                 this.dx += vPull.x;
                 this.dy += vPull.y;
+                
                 
                 var massRel = this.weight / (this.weight + player.weight);
                 player.dx -= vPull.x * massRel;
@@ -1167,12 +1225,13 @@ move:
         
         if (!this.resting)
         {
-            this.dy += this.world.gravity;
+            this.world.doLocalGravity(this);
+            //this.dy += this.world.gravity;
             this.translate( this.dx, this.dy);
             
             var ptDock = this.world.base.pos.add(25,-12);
             var dist = ptDock.substract(this.pos).length();
-            if (dist < this.radius * 1.5)
+            if (dist < this.radius * 1.75)
             {
                 this.resting = true;
                 this.connected = false;
@@ -1271,6 +1330,35 @@ draw:
         ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2, false);       
         ctx.fill();
     }
+});
+
+this.GravPoint = Class.extend({
+init:
+    function(world, x, y, r)
+    {
+        this.pos = new Vector2D(x,y);
+        this.radius = r;
+        this.force = 600;
+        world.addGravSource(this);
+    },
+getBBox:
+    function()
+    {
+        return outerBox(this.pos, this.radius)
+    },
+doGravity:
+   function(obj)
+   {
+        var vObject = obj.pos.substract(this.pos);
+        var distance = vObject.length();
+        if (distance < this.radius)
+        {
+            var vNorm = vObject.multiply(-1/distance);
+            var dSquared = distance * distance;
+            obj.dx += vNorm.x * this.force  / dSquared; 
+            obj.dy += vNorm.y * this.force / dSquared; 
+        }
+   }
 });
 
 })();

@@ -72,6 +72,11 @@ clone:
     {
         return new Vector2D(this.x, this.y);
     },
+isSameDirection:
+    function(dx)
+    {
+        return (this.x < 0 ? -1 : 1) == (dx < 0 ? -1 : 1); 
+    },
 toString:
     function()
     {

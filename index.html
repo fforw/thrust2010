@@ -26,6 +26,16 @@ body,div
 	height: 40px;
 }
 
+#header a
+{
+	color: #eee;
+}
+
+#header a:visited
+{
+	color: #ddf;
+}
+
 #header ul,#header li
 {
 	display: inline
@@ -38,7 +48,7 @@ body,div
 	display: inline;
 	color: #fff;
 }
-span.help
+span.nav
 {
 	font-size: 0.9em;
 	font-color: #ddd;
@@ -64,10 +74,15 @@ span.help
 </head>
 <body>
 <div id="header">
+	<form action="index.html" method="get">
 	<h1>Thrust 2010</h1>
-	<span class="help">
-		Left mouse button to thrust, Right mouse button to shoot. Press "T" to engage/disengage tractor beam when close to cargo.
-	</span> 
+	<a class="nav" href="help.html">Instructions</a>
+	<select id="levelSelector" name="level" class="nav">
+		<option>Choose Level</option>
+		<option>cave.svg</option>
+		<option>cave2.svg</option>
+	</select> 
+	</form>
 </div>
 <canvas id="teh_canvas"><p>This only works with browsers supporting canvas.</p></canvas>
 </body>
