@@ -40,11 +40,11 @@ function parseTransform($elem)
         
         
         var v = new Vector2D(+n[0], +(n[1] || 0));
-        console.debug("matched %o", v);
+        //console.debug("matched %o", v);
         return v;
     }
     
-    console.debug("not matched %s", s);
+    //console.debug("not matched %s", s);
     return null;
 }
 
@@ -74,8 +74,6 @@ function readStyle($elem)
     style.fillStyle = $elem.svgStyle("fill") || "#f0f";
     style.strokeStyle = $elem.svgStyle("stroke") || "none";
 
-    console.debug();
-    
     return style;
 }
 
@@ -121,7 +119,7 @@ init:
             { 
                 var playerX = 0, playerY = 0;
                 
-                console.debug(data);
+                //console.debug(data);
                 
                 $("path,rect", data.documentElement).each(function(){
                     
@@ -134,6 +132,12 @@ init:
                     {
                         case "#scene": 
                             var pathData = $elem.attr("d");
+                            
+                            if ($elem.attr("id") == "path3881")
+                            {
+                                console.debug("mark");
+                            }
+                            
                             world.createSubPaths(pathData, readStyle($elem));
                             break;
                         case "#start":

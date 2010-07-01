@@ -189,10 +189,12 @@ extend:
             
             if (vOrBox.x < this.x)
             {
+                this.w += this.x - vOrBox.x; 
                 this.x = vOrBox.x;
             }
             if (vOrBox.y < this.y)
             {
+                this.h += this.y - vOrBox.y; 
                 this.y = vOrBox.y;
             }
             
@@ -561,8 +563,10 @@ registerLines:
         }
         var ptLast = pts[ pts.length - 1 ];
         this.insertLineBox( ptLast, pts[0]);
-        box.extend( ptLast);
         this.box = box;
+        
+        console.debug("register %o for %o", box, this);
+        
         this.world.rtree.insert(box, this);
     },
 getBBox:

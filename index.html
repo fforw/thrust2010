@@ -29,6 +29,8 @@ body,div
 #header a
 {
 	color: #eee;
+	float: right;
+	margin-left: 2ex;
 }
 
 #header a:visited
@@ -41,6 +43,10 @@ body,div
 	display: inline
 }
 
+#header select
+{
+	vertical-align: super;
+}
 #header h1
 {
 	font-size: 32px;
@@ -54,6 +60,7 @@ span.nav
 	font-color: #ddd;
 	float: right;
 	line-height: 40px;
+	height: 40px;
 }
 
 </style>
@@ -76,12 +83,13 @@ span.nav
 <div id="header">
 	<form action="index.html" method="get">
 	<h1>Thrust 2010</h1>
-	<a class="nav" href="help.html">Instructions</a>
 	<select id="levelSelector" name="level" class="nav">
 		<option>Choose Level</option>
 		<option>cave.svg</option>
 		<option>cave2.svg</option>
 	</select> 
+	<a class="nav" href="help.html">Instructions</a>
+	<a class="nav" href="thrust-current.zip">Download .ZIP</a>
 	</form>
 </div>
 <canvas id="teh_canvas"><p>This only works with browsers supporting canvas.</p></canvas>
