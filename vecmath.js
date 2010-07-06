@@ -73,9 +73,16 @@ clone:
         return new Vector2D(this.x, this.y);
     },
 isSameDirection:
-    function(dx)
+    function(x,y)
     {
-        return (this.x < 0 ? -1 : 1) == (dx < 0 ? -1 : 1); 
+        if (typeof x === "object")
+        {
+            y = x.y;
+            x = x.x;
+        }
+        
+        return (this.x < 0 ? -1 : 1) === (x < 0 ? -1 : 1) &&
+               (this.y < 0 ? -1 : 1) === (y < 0 ? -1 : 1); 
     },
 toString:
     function()

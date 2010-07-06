@@ -1,7 +1,12 @@
 (function()
 {
+
+var OVERVIEW_SCALE = 0.475;
+var INV_OVERVIEW_SCALE = 1 / OVERVIEW_SCALE;
+
 var $wnd = $(window), $holder;
-    
+
+
 function removeThis()
 {
     this.remove();
@@ -242,7 +247,64 @@ init:
         this.box = new BBox();
         
         this.gravs = [];
+        
+        //this.overview = true;
    },
+insertLineBox: 
+    function(pt0, pt1)
+    {
+        var rtree = this.rtree, x, y, w, h;
+        // console.debug("pt0 = %d, %d, pt1 = %d, %d", pt0.x, pt0.y, pt1.x,
+        // pt1.y)
+
+        if (pt0.x < pt1.x)
+        {
+            x = pt0.x;
+            w = pt1.x - pt0.x;
+        } else
+        {
+            x = pt1.x;
+            w = pt0.x - pt1.x;
+        }
+
+        if (pt0.y < pt1.y)
+        {
+            y = pt0.y;
+            h = pt1.y - pt0.y;
+        } else
+        {
+            y = pt1.y;
+            h = pt0.y - pt1.y;
+        }
+
+        var box = {
+        "x" : x,
+        "y" : y,
+        "w" : Math.max(0.001,w),
+        "h" : Math.max(0.001,h)
+        };
+        var obj = {
+        "type" : "line",
+        "pt0" : pt0,
+        "pt1" : pt1
+        };
+        rtree.insert(box, obj);
+    },
+fromScreen:
+    function(ptScreen)   
+    {
+       if (!ptScreen)
+           return null;
+       
+       if (this.overview)
+       {
+           return ptScreen.multiply(INV_OVERVIEW_SCALE);
+       }
+       else
+       {
+           return ptScreen.add(this.offset);
+       }
+    },   
 addGravSource:
     function(grav)
     {
@@ -377,12 +439,19 @@ step:
         ctx.clearRect(0,0,canvasWidth,canvasHeight);
         var offset = this.player.pos.substract( canvasWidth / 2, canvasHeight / 2);
         //console.debug(this.ox)
-        ctx.translate( -offset.x, -offset.y);
-        //ctx.scale( 0.5, 0.5);
+        
+        if (this.overview)
+        {        
+            ctx.scale( OVERVIEW_SCALE, OVERVIEW_SCALE);
+        }
+        else
+        {
+            ctx.translate( -offset.x, -offset.y);
+        }
 
         this.offset = offset;
         
-        var box = { x: offset.x, y: offset.y, w: canvasWidth, h: canvasHeight};
+        var box = this.overview ? this.box : { x: offset.x, y: offset.y, w: canvasWidth, h: canvasHeight};
         
         for ( var i = 0; i < this.objects.length; i++)
         {
@@ -401,7 +470,10 @@ step:
         this.drawScene(inScreenObjects, 2);
         
         ctx.restore();
-        this.drawOutsideBox(this.ctx, canvasWidth, canvasHeight);
+        if (!this.overview)
+        {
+            this.drawOutsideBox(this.ctx, canvasWidth, canvasHeight);
+        }
         
     },
 drawOutsideBox:
@@ -558,11 +630,11 @@ registerLines:
             var pt0 = pts[i];
             var pt1 = pts[i + 1];
             
-            this.insertLineBox(pt0, pt1);
+            this.world.insertLineBox(pt0, pt1);
             box.extend(pt0,pt1);
         }
         var ptLast = pts[ pts.length - 1 ];
-        this.insertLineBox( ptLast, pts[0]);
+        this.world.insertLineBox( ptLast, pts[0]);
         this.box = box;
         
         console.debug("register %o for %o", box, this);
@@ -573,49 +645,14 @@ getBBox:
     function()
     {
         return this.box;
-    },
-insertLineBox:
-    function(pt0,pt1)
-    {
-        
-        var rtree = this.world.rtree, x,y,w,h;
-        //console.debug("pt0 = %d, %d, pt1 = %d, %d", pt0.x, pt0.y, pt1.x, pt1.y)
-        
-        if (pt0.x < pt1.x)
-        {
-            x = pt0.x;
-            w = pt1.x - pt0.x;
-        }
-        else
-        {
-            x = pt1.x;
-            w = pt0.x - pt1.x;
-        }
-
-        if (pt0.y < pt1.y)
-        {
-            y = pt0.y;
-            h = pt1.y - pt0.y;
-        }
-        else
-        {
-            y = pt1.y;
-            h = pt0.y - pt1.y;
-        }
-        
-//        var paper = this.world.paper;
-//        paper.path("M" + pt0.x + "," + pt0.y + " L" + pt1.x +","+ pt1.y ).attr("stroke","#f0f");
-        var box = { "x": x, "y": y, "w": w, "h": h};
-        var obj = {"type":"line", "pt0": pt0, "pt1": pt1};
-        rtree.insert( box, obj);
-    }    
+    }   
 });    
 function randomColor()
 {
     return "rgb(" + Math.random() * 255 + "," + Math.random() * 255 + "," + Math.random() * 255 + ")";
 }
 
-this.Player = GameObject.extend({
+this.Ship = GameObject.extend({
 init: function(world,initX,initY)
     {    
         this._super(world);
@@ -664,7 +701,7 @@ explode:
         {
             this.dead = true;
             
-            new Explosion(this.world, pos || this.pos.clone(), 15, this.world.player.reset, player);
+            new Explosion(this.world, pos || this.pos.clone(), 15, this == this.world.player ? this.world.player.reset : function() {}, player);
         }
     },
 draw:
@@ -675,6 +712,7 @@ draw:
             if (this.thrusterPos)
             {
                 ctx.beginPath();
+                
                 ctx.fillStyle="#ffc";
                 ctx.strokeStyle="#c00";
                 ctx.arc(this.thrusterPos.x, this.thrusterPos.y, 3, 0, Math.PI*2, false);
@@ -683,9 +721,25 @@ draw:
             }
 
             ctx.beginPath();
-            ctx.fillStyle = "#008";
+            var isPlayer = this === this.world.player;
+            if (isPlayer)
+            {
+                // player ship style
+                ctx.fillStyle = "#008";
+            }
+            else
+            {
+                // alien ship style
+                ctx.fillStyle="#700";
+                ctx.strokeStyle="#f0f";
+            }
+            
             ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2, false);
             ctx.fill();
+            if (!isPlayer)
+            {
+                ctx.stroke();
+            }
         }
     },    
 getBBox:
@@ -726,7 +780,7 @@ move:
                 // tractor beam from the cargo to the player
                 var vTractor = this.pos.substract(connected.pos);
             
-                if (vTractor.isSameDirection(ddx) &&  vTractor.length() > this.tractorMax * 0.98)
+                if (vTractor.isSameDirection(ddx,ddy) &&  vTractor.length() > this.tractorMax * 0.98)
                 {
                     var v = new Vector2D(ddx,ddy).projectOnto(vTractor);
                     connected.dx += v.x;
@@ -818,11 +872,13 @@ move:
 thrust:
     function(point)
     {
-        this.thrustPoint = point;
+        this.thrustPoint = this.world.fromScreen(point);
     },
 shoot:
     function(point)
     {
+        point = this.world.fromScreen(point);
+            
         var angle = point.angleTo(this.pos);
         new Bullet(this.world, this.pos.add( 
                 this.dx + this.radius * Math.cos(angle), 
@@ -1013,7 +1069,7 @@ init:
         console.debug("best match = %o", best);
         
         this.pos.x = best.closest.x - 50;
-        this.pos.y = best.closest.y - 4;
+        this.pos.y = best.closest.y - 30;
         this.type = "base";
         
         var pathData = "m 0 0 3.16270845,-5.0606 7.2862375,-3.1782 6.488,3.1407 7.960945,1.0325 7.436151,-1.0371 7.012796,-3.1361 6.340311,3.1723 4.108634,5.0665 0,3.707 -2,3.7071 -45.795783,0 -1.99999995,-3.7071 0,-3.707 z";

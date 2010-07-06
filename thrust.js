@@ -94,6 +94,8 @@ function readCircleData($elem)
     return data;
 }
 
+var $canvas, canvasOffset;
+
 window.Thrust = {
 init:
     function()
@@ -120,6 +122,8 @@ init:
                 var playerX = 0, playerY = 0;
                 
                 //console.debug(data);
+                
+                var aliens = {};
                 
                 $("path,rect", data.documentElement).each(function(){
                     
@@ -166,22 +170,58 @@ init:
                             var data = readCircleData($elem);
                             new GravPoint(world, data.x, data.y, (data.rx + data.ry) / 2);
                             break;
+                        case "#alien":
+                            var data = readCircleData($elem);
+                            aliens[$elem[0].id] = new AlienControl(new Ship(world, data.x, data.y));
+                            break;
                             
                     }
                 });
                 
+                $("path", data.documentElement).each(function(){
+                    
+                    var $elem = $(this);
+                    
+                    var name = $elem.attr("inkscape:label");
+                    
+                    var m = /^#way-([0-9]+)-(.*)$/.exec(name);
+                    if (m)
+                    {
+                        var data = readCircleData($elem);
+                        var idx = +m[1];
+                        var id = m[2];
+                        aliens[id].setWayPoint(idx, data.x, data.y);
+                    }
+                });
+
+                //console.debug("base player pt = %d,%d", playerX, playerY);
                 world.base = new Base(world, playerX, playerY);
                 
                 var pt = world.base.pos;
                 
-                //console.debug("base player pt = %s", pt);
                 
                 playerX = pt.x + 25;
                 playerY = pt.y - 25 ;
                 //console.debug("World box: %s", world.box);
                 
-                player = new Player(world, playerX, playerY);
+                player = new Ship(world, playerX, playerY);
                 world.player = player;
+                
+                $canvas = $("#teh_canvas");
+                var off = $canvas.offset();
+                canvasOffset = new Vector2D(off.left, off.top);
+                
+                console.debug("canvasOffset = %o", canvasOffset);
+                
+                var topLft = new Vector2D(world.box.x, world.box.y);
+                var w = world.box.w;
+                var h = world.box.h;
+                var botRgt = new Vector2D(world.box.x + w, world.box.y + h);
+                
+                world.insertLineBox(topLft,topLft.add(w,0));
+                world.insertLineBox(topLft,topLft.add(0,h));
+                world.insertLineBox(botRgt,botRgt.substract(w,0));
+                world.insertLineBox(botRgt,botRgt.substract(0,h));
                 
                 (function mainLoop()
                 {
@@ -193,10 +233,10 @@ init:
                 
         function thrust(ev) 
         { 
-            var point = new Vector2D( ev.pageX , ev.pageY);
+            var point = new Vector2D( ev.pageX , ev.pageY).substract(canvasOffset);
             //var pos = new Vector2D(player.x,player.y);
             //console.debug("point = %s, pos = %s", point,pos);
-            player.thrust( point.add(world.offset));
+            player.thrust( point);
             
         }
         
@@ -208,7 +248,7 @@ init:
         {
             if (ev.button == 2 || ev.ctrlKey)
             {
-                player.shoot(new Vector2D(ev.pageX,ev.pageY).add(world.offset));
+                player.shoot(new Vector2D(ev.pageX,ev.pageY).substract(canvasOffset));
                 return false;
             }
             else
