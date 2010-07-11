@@ -1,7 +1,12 @@
 var paper, world, player;
 (function($,window,undefined)
 {
+    
+var FRAMES_PER_SECOND = 24;
+var STEPS_PER_SECOND = 25;
 
+var STEP_TIME = 1000 / STEPS_PER_SECOND;
+var FRAME_TIME = 1000 / STEPS_PER_SECOND;
 
 function points()
 {
@@ -30,71 +35,7 @@ function getParameter(name)
     }
 }
 
-function parseTransform($elem)
-{
-    var s = $elem.attr("transform");
-    var m = /translate\((.*)\)/.exec(s);
-    if (m)
-    {
-        var n = m[1].split(",");
-        
-        
-        var v = new Vector2D(+n[0], +(n[1] || 0));
-        //console.debug("matched %o", v);
-        return v;
-    }
-    
-    //console.debug("not matched %s", s);
-    return null;
-}
-
-$.fn.svgStyle = function(name)
-{
-    var styles = this.data("svgStyles");
-    if (!styles)
-    {
-        styles = {};
-        
-        var re = /\s*([a-zA-Z-]+)\s*:\s*([^;]*)\s*(?:;|$)/g;
-        var s = this.attr("style");
-        while (m = re.exec(s))
-        {
-            styles[m[1]] = m[2];
-        }
-        this.data("svgStyles", styles);
-    }
-    return styles[name];   
-}
-
-
-function readStyle($elem)
-{
-    var style = {};
-    
-    style.fillStyle = $elem.svgStyle("fill") || "#f0f";
-    style.strokeStyle = $elem.svgStyle("stroke") || "none";
-
-    return style;
-}
-
-function readCircleData($elem)
-{
-    var data = { 
-        x: (+$elem.attr("sodipodi:cx")),
-        y: (+$elem.attr("sodipodi:cy")),
-        rx: (+$elem.attr("sodipodi:rx")),
-        ry: (+$elem.attr("sodipodi:ry")) };
-    
-    var transform = parseTransform($elem);
-    if (transform)
-    {
-        data.x += transform.x;
-        data.y += transform.y;
-    }
-    return data;
-}
-
-var $canvas, canvasOffset;
+var $canvas, canvasOffset, animationTime = null;
 
 window.Thrust = {
 init:
@@ -111,9 +52,13 @@ init:
             } 
         }
     
-        var levelURL = getParameter("level") || "cave.svg";
+        var levelURL = getParameter("level") || "levels/cave.svg";
     
         world = new World("teh_canvas");
+        world.overview = !!(getParameter("overview") || false);
+        
+        var delayed = [];
+        
         $.ajax({
             url: levelURL, 
             dataType: "xml", 
@@ -123,85 +68,49 @@ init:
                 
                 //console.debug(data);
                 
-                var aliens = {};
+                var svgFactories = SvgFactory.prototype.getRegistered();
+                
+                console.debug("svgFactories = %o", svgFactories);
+                console.debug("polex = %o", Polygon.extend);
                 
                 $("path,rect", data.documentElement).each(function(){
                     
                     var $elem = $(this);
                     
                     var name = $elem.attr("inkscape:label");
-                    console.debug("$elem = %o, name=%s", $elem, name);
                     var worldBBox = new BBox();
-                    switch(name)
+                    
+                    var created = false;
+                    for ( var i = 0, len = svgFactories.length; i < len; i++)
                     {
-                        case "#scene": 
-                            var pathData = $elem.attr("d");
-                            
-                            if ($elem.attr("id") == "path3881")
+                        var factory = svgFactories[i];
+                        if (result = factory.create(world, $elem, name))
+                        {
+                            if (typeof result == "function")
                             {
-                                console.debug("mark");
+                                delayed.push(result);
                             }
                             
-                            world.createSubPaths(pathData, readStyle($elem));
+                            created = true;
                             break;
-                        case "#start":
-                            playerX = (+$elem.attr("x"));
-                            playerY = (+$elem.attr("y"));
-                            break;
-                        case "#sentinel":
-                            var data = readCircleData($elem);
-                            new Sentinel(world, data.x, data.y, (data.rx + data.ry) / 2);
-                            break;
-                        case "#cargo":
-                            var x = (+$elem.attr("sodipodi:cx"));
-                            var y = (+$elem.attr("sodipodi:cy"));
-
-                            var transform = parseTransform($elem);
-                            
-                            if (transform)
-                            {
-                                console.debug("transform = %s", transform);
-                                x += transform.x;
-                                y += transform.y;
-                            }
-                            new Cargo(world, x,y);
-                            break;
-                        case "#gravpoint":
-                            var data = readCircleData($elem);
-                            new GravPoint(world, data.x, data.y, (data.rx + data.ry) / 2);
-                            break;
-                        case "#alien":
-                            var data = readCircleData($elem);
-                            aliens[$elem[0].id] = new AlienControl(new Ship(world, data.x, data.y));
-                            break;
-                            
+                        }
+                    }
+                    
+                    if (!created)
+                    {
+                        console.debug("not object created for $elem = %o, name=%s", $elem, name);
                     }
                 });
                 
-                $("path", data.documentElement).each(function(){
-                    
-                    var $elem = $(this);
-                    
-                    var name = $elem.attr("inkscape:label");
-                    
-                    var m = /^#way-([0-9]+)-(.*)$/.exec(name);
-                    if (m)
-                    {
-                        var data = readCircleData($elem);
-                        var idx = +m[1];
-                        var id = m[2];
-                        aliens[id].setWayPoint(idx, data.x, data.y);
-                    }
-                });
-
-                //console.debug("base player pt = %d,%d", playerX, playerY);
-                world.base = new Base(world, playerX, playerY);
+                for ( var i = 0, len = delayed.length; i < len; i++)
+                {
+                    delayed[i].call(this);
+                }
                 
                 var pt = world.base.pos;
                 
-                
-                playerX = pt.x + 25;
-                playerY = pt.y - 25 ;
+                var playerX = pt.x + 25;
+                var playerY = pt.y - 25 ;
                 //console.debug("World box: %s", world.box);
                 
                 player = new Ship(world, playerX, playerY);
@@ -213,6 +122,7 @@ init:
                 
                 console.debug("canvasOffset = %o", canvasOffset);
                 
+                // register additional lines for level bounds
                 var topLft = new Vector2D(world.box.x, world.box.y);
                 var w = world.box.w;
                 var h = world.box.h;
@@ -223,10 +133,29 @@ init:
                 world.insertLineBox(botRgt,botRgt.substract(w,0));
                 world.insertLineBox(botRgt,botRgt.substract(0,h));
                 
+                animationTime = (new Date()).getTime();
+                var lastFrame = animationTime;
                 (function mainLoop()
                 {
+                    var time = (new Date()).getTime();
+                    
+                    while (animationTime < time)
+                    {                    
+                        world.step();
+                        animationTime += STEP_TIME;
+                    }
                     world.step();
-                    window.setTimeout(mainLoop, 20);
+                    world.draw();
+                    
+                    
+                    
+                    var wait = (lastFrame + FRAME_TIME) - (new Date()).getTime();
+                    if (wait < 1)
+                    {
+                        wait = 1;
+                    }
+                    window.setTimeout(mainLoop, wait);
+                    lastFrame = time;
                 })();                
             }
         });

@@ -1,11 +1,26 @@
 (function()
 {
+    
+var markers = [];
+
+this.Marker = Class.extend({
+init:    
+    function(x,y, col)
+    {
+        this.x = x;
+        this.y = y;
+        this.col = col || "#f0f";
+        
+        markers.push(this);
+    }
+});
 
 var OVERVIEW_SCALE = 0.475;
 var INV_OVERVIEW_SCALE = 1 / OVERVIEW_SCALE;
 
 var $wnd = $(window), $holder;
 
+var svgFactories = [];
 
 function removeThis()
 {
@@ -112,6 +127,8 @@ function findClosestPointInCandidates(candidates, ptBullet)
         candidate = candidates[i];
         if (candidate && candidate.type === "line")
         {
+//            new Marker(candidate.pt0.x, candidate.pt0.y);
+//            new Marker(candidate.pt1.x, candidate.pt1.y);
             var closest = closestPointOnLineSegment(ptBullet, candidate.pt0, candidate.pt1);
             
             var distance = closest.substract(ptBullet).length();
@@ -176,6 +193,89 @@ function removeFromArray(array,obj)
         array.splice(idx,1);
     }
 }
+
+this.SvgFactory = Class.extend({
+init:
+    function(fn)
+    {
+        this.create = fn;
+        svgFactories.push(this);
+    },
+getRegistered:
+    function()
+    {
+        return svgFactories;
+    },
+/*
+create:
+    function(world, $elem, name)
+    {
+    },
+ */    
+readCircleData:    
+    function($elem)
+    {
+        var data = { 
+            x: (+$elem.attr("sodipodi:cx")),
+            y: (+$elem.attr("sodipodi:cy")),
+            rx: (+$elem.attr("sodipodi:rx")),
+            ry: (+$elem.attr("sodipodi:ry")) };
+        
+        var transform = this.parseTransform($elem);
+        if (transform)
+        {
+            data.x += transform.x;
+            data.y += transform.y;
+        }
+        return data;
+    },
+parseTransform:    
+    function($elem)
+    {
+        var s = $elem.attr("transform");
+        var m = /translate\((.*)\)/.exec(s);
+        if (m)
+        {
+            var n = m[1].split(",");
+            
+            
+            var v = new Vector2D(+n[0], +(n[1] || 0));
+            //console.debug("matched %o", v);
+            return v;
+        }
+        
+        //console.debug("not matched %s", s);
+        return null;
+    },
+svgStyle:
+    function($elem, name)
+    {
+        var styles = $elem.data("svgStyles");
+        if (!styles)
+        {
+            styles = {};
+            
+            var re = /\s*([a-zA-Z-]+)\s*:\s*([^;]*)\s*(?:;|$)/g;
+            var s = $elem.attr("style");
+            while (m = re.exec(s))
+            {
+                styles[m[1]] = m[2];
+            }
+            $elem.data("svgStyles", styles);
+        }
+        return styles[name];   
+    },
+readStyle:    
+    function($elem)
+    {
+        var style = {};
+        
+        style.fillStyle = this.svgStyle($elem, "fill") || "#f0f";
+        style.strokeStyle = this.svgStyle($elem, "stroke") || "none";
+    
+        return style;
+    }
+});
 
 this.BBox = function()
 {
@@ -247,8 +347,6 @@ init:
         this.box = new BBox();
         
         this.gravs = [];
-        
-        //this.overview = true;
    },
 insertLineBox: 
     function(pt0, pt1)
@@ -427,7 +525,21 @@ createSubPaths:
 width: 1000,
 height: 1000,
 ox:0,oy:0,
+
 step:
+    function()
+    {
+        for ( var i = 0; i < this.objects.length; i++)
+        {
+            var obj = this.objects[i];
+            obj.message("move");
+            if (obj.gravityBound)
+            {
+                this.doLocalGravity(obj);
+            }
+        }
+    },
+draw:
     function()
     {
         var ctx = this.ctx;
@@ -453,21 +565,24 @@ step:
         
         var box = this.overview ? this.box : { x: offset.x, y: offset.y, w: canvasWidth, h: canvasHeight};
         
-        for ( var i = 0; i < this.objects.length; i++)
-        {
-            var obj = this.objects[i];
-            obj.message("move");
-            if (obj.gravityBound)
-            {
-                this.doLocalGravity(obj);
-            }
-        }
-        
-        
         var inScreenObjects = this.rtree.search(box);
         this.drawScene(inScreenObjects, 0);
         this.drawScene(inScreenObjects, 1);
         this.drawScene(inScreenObjects, 2);
+        
+        if (markers.length > 0)
+        {
+            ctx.save();
+            for ( var i = 0, len = markers.length; i < len; i++)
+            {
+                var m = markers[i];
+                ctx.fillStyle = m.col;
+                ctx.beginPath();
+                ctx.arc(m.x, m.y, 4, 0, Math.PI*2, false);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
         
         ctx.restore();
         if (!this.overview)
@@ -529,7 +644,7 @@ drawScene:
     }
 });    
     
-var GameObject = Class.extend({
+this.GameObject = Class.extend({
 init: function(world)
     {     
         this.world = world;
@@ -554,6 +669,16 @@ translate:
         var pos = this.pos;
         pos.x += x;
         pos.y += y;
+    },
+onTypeCreation:    
+    function()
+    {
+        var fn = this.fromSvg;
+        if (fn)
+        {
+            new SvgFactory(fn);
+            delete this.fromSvg;
+        }
     }
 });    
 
@@ -578,6 +703,19 @@ this.Polygon = GameObject.extend({
         {
             this.registerLines();
         }
+    },
+fromSvg:
+    function(world, $elem, name)
+    {
+        if (name === "#scene")
+        {
+            console.debug("%s is #scene", name);
+            var pathData = $elem.attr("d");
+            world.createSubPaths(pathData, this.readStyle($elem));
+            return true;
+        }
+        console.debug("%s is not #scene", name);
+        return false;
     },
 draw:
     function(ctx, debug)
@@ -647,6 +785,7 @@ getBBox:
         return this.box;
     }   
 });    
+
 function randomColor()
 {
     return "rgb(" + Math.random() * 255 + "," + Math.random() * 255 + "," + Math.random() * 255 + ")";
@@ -892,7 +1031,7 @@ translate:
         this.world.rtree.insert(this.message("getBBox"), this);
     }
 });    
-    
+
 this.Bullet = GameObject.extend({
 init:
     function(world, pt, angle)
@@ -1063,21 +1202,39 @@ init:
         this.pos = new Vector2D(x,y);
         this.fillColor = "#5a6";
         
-        var candidates = world.rtree.search({x: x, y:y, w: 50, h:150});
+        var candidates = world.rtree.search({x: x - 25, y: y - 50, w: 50, h:100});
         var best = findClosestPointInCandidates(candidates, this.pos);
 
         console.debug("best match = %o", best);
         
-        this.pos.x = best.closest.x - 50;
-        this.pos.y = best.closest.y - 30;
+        //new Marker(best.closest.x, best.closest.y);
+        
+        this.pos.x = best.closest.x - 25;
+        this.pos.y = best.closest.y - 4;
         this.type = "base";
         
-        var pathData = "m 0 0 3.16270845,-5.0606 7.2862375,-3.1782 6.488,3.1407 7.960945,1.0325 7.436151,-1.0371 7.012796,-3.1361 6.340311,3.1723 4.108634,5.0665 0,3.707 -2,3.7071 -45.795783,0 -1.99999995,-3.7071 0,-3.707 z";
+        var pathData = "M 0 0 m 3.16270845,-5.0606 7.2862375,-3.1782 6.488,3.1407 7.960945,1.0325 7.436151,-1.0371 7.012796,-3.1361 6.340311,3.1723 4.108634,5.0665 0,3.707 -2,3.7071 -45.795783,0 -1.99999995,-3.7071 0,-3.707 z";
         this._super(world, pathData, true);        
         this.zIndex = 0;
         this.style = { "strokeStyle" : "none", fillStyle: "#5a6"};
         
         this.world.rtree.insert(this.message("getBBox"), this);        
+    },
+fromSvg:
+    function(world, $elem, name)
+    {
+        if (name.indexOf("#start") == 0)
+        {
+            return function() {
+                var base = new Base(world, (+$elem.attr("x")), (+$elem.attr("y")));
+                
+                if ((base.main = name === "#start"))
+                {
+                    world.base = base; 
+                }  
+            };
+        }
+        return false;
     },
 getBBox:
     function()
@@ -1115,6 +1272,17 @@ init:
         this.dead = false;
         
         this.world.rtree.insert(this.getBBox(), this);        
+    },
+fromSvg:
+    function(world, $elem, name)
+    {
+        if (name === "#sentinel")
+        {
+            var data = this.readCircleData($elem);
+            new Sentinel(world, data.x, data.y, (data.rx + data.ry) / 2);
+            return true;
+        }
+        return false;
     },
 explode: 
     function(pos)
@@ -1246,6 +1414,26 @@ init:
         this.zIndex = 2;
         this.weight = 100;
         this.world.rtree.insert(this.getBBox(), this);
+    },
+fromSvg:
+    function(world, $elem, name)
+    {
+        if (name === "#cargo")
+        {
+            var x = (+$elem.attr("sodipodi:cx"));
+            var y = (+$elem.attr("sodipodi:cy"));
+
+            var transform = this.parseTransform($elem);
+            
+            if (transform)
+            {
+                x += transform.x;
+                y += transform.y;
+            }
+            new Cargo(world, x,y);
+            return true;
+        }
+        return false;
     },
 move:
     function()
@@ -1392,7 +1580,7 @@ draw:
     }
 });
 
-this.GravPoint = Class.extend({
+this.GravPoint = GameObject.extend({
 init:
     function(world, x, y, r)
     {
@@ -1406,6 +1594,18 @@ getBBox:
     {
         return outerBox(this.pos, this.radius)
     },
+fromSvg:
+    function(world, $elem, name)
+    {
+        if (name === "#gravpoint")
+        {
+            var data = this.readCircleData($elem);
+            new GravPoint(world, data.x, data.y, (data.rx + data.ry) / 2);
+            return true;
+        }
+        return false;
+    },
+    
 doGravity:
    function(obj)
    {

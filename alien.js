@@ -40,98 +40,100 @@ function createHeatMap()
     return l;
 }   
 
-this.AlienControl = Class.extend({
+var aliens = {};
+
+this.Alien = Ship.extend({
 init:
-    function(ship)
+    function(world,x,y)
     {
-        this.world = ship.world;
-        this.ship = ship;
+        this._super(world,x,y);
+
         this.awarenessRadius = 100;
         
-        this.way = [ ship.pos.clone()];
+        this.way = [ this.pos.clone()];
         this.wayCnt = 0;
-        
-        var oldMove = ship.move;
-        
-        var ctrl = this;
-        // monkey patch move function
-        ship.move = function()
-        {
-            ctrl.plan(oldMove);
-        };        
-
-        var oldDraw = ship.draw;
-        // monkey patch draw function
-        ship.draw = function(ctx)
-        {
-//            if (ship.heat)
-//            {
-//                for ( var i = 0, angle = 0, len = ship.heat.length; i < len; i++, angle += RAD_PER_SLICE)
-//                {
-//                    var v = ship.heat[i];
-//                    //console.debug("v = %s", v);
-//                    ctx.fillStyle = v < 0 ? "#00f" : "#f00";
-//                    
-//                    ctx.beginPath();                    
-//                    ctx.arc(
-//                            ship.pos.x + Math.cos(angle) * (this.radius + 5 ),
-//                            ship.pos.y + Math.sin(angle) * (this.radius + 5 ),
-//                            v / 0.475 + 1, 0, Math.PI*2, false);
-//                    ctx.fill();
+    },
+draw:
+    function(ctx)
+    {
+//      if (ship.heat)
+//      {
+//          for ( var i = 0, angle = 0, len = ship.heat.length; i < len; i++, angle += RAD_PER_SLICE)
+//          {
+//              var v = ship.heat[i];
+//              //console.debug("v = %s", v);
+//              ctx.fillStyle = v < 0 ? "#00f" : "#f00";
+//              
+//              ctx.beginPath();                    
+//              ctx.arc(
+//                      ship.pos.x + Math.cos(angle) * (this.radius + 5 ),
+//                      ship.pos.y + Math.sin(angle) * (this.radius + 5 ),
+//                      v / 0.475 + 1, 0, Math.PI*2, false);
+//              ctx.fill();
 //
-//                    ctx.beginPath();                    
-//                    ctx.strokeStyle = "#444";                    
-//                    ctx.arc(
-//                            ship.pos.x ,
-//                            ship.pos.y ,
-//                            ctrl.awarenessRadius, 0, Math.PI*2, false);
-//                    ctx.stroke();
-//                }
-//                
-//            }
-//            if (ship.checked)
-//            {
-//                for ( var i = 0, len = ship.checked.length; i < len; i++)
-//                {
-//                    var obj = ship.checked[i];
-//                    if (obj.type === "line")
-//                    {
-//                        ctx.strokeStyle = "#ccc";
-//                        ctx.lineWidth = 4;
-//                        ctx.beginPath();                    
-//                        ctx.moveTo(obj.pt0.x,obj.pt0.y);
-//                        ctx.lineTo(obj.pt1.x,obj.pt1.y);
-//                        ctx.fill();
-//                        ctx.lineWidth = 1;
-//                    }
-//                    else
-//                    {
-//                        ctx.beginPath();                    
-//                        ctx.fillStyle = "#888";
-//                        ctx.arc(
-//                                ship.pos.x ,
-//                                ship.pos.y ,
-//                                4, 0, Math.PI*2, false);
-//                        ctx.fill();
-//                    }
-//                }
-//            }
-//            
+//              ctx.beginPath();                    
+//              ctx.strokeStyle = "#444";                    
+//              ctx.arc(
+//                      ship.pos.x ,
+//                      ship.pos.y ,
+//                      ctrl.awarenessRadius, 0, Math.PI*2, false);
+//              ctx.stroke();
+//          }
+//          
+//      }
+//      if (ship.checked)
+//      {
+//          for ( var i = 0, len = ship.checked.length; i < len; i++)
+//          {
+//              var obj = ship.checked[i];
+//              if (obj.type === "line")
+//              {
+//                  ctx.strokeStyle = "#ccc";
+//                  ctx.lineWidth = 4;
+//                  ctx.beginPath();                    
+//                  ctx.moveTo(obj.pt0.x,obj.pt0.y);
+//                  ctx.lineTo(obj.pt1.x,obj.pt1.y);
+//                  ctx.fill();
+//                  ctx.lineWidth = 1;
+//              }
+//              else
+//              {
+//                  ctx.beginPath();                    
+//                  ctx.fillStyle = "#888";
+//                  ctx.arc(
+//                          ship.pos.x ,
+//                          ship.pos.y ,
+//                          4, 0, Math.PI*2, false);
+//                  ctx.fill();
+//              }
+//          }
+//      }
+//      
 //
-            
-            var pt = ctrl.way[ctrl.wayCnt];
-            if (pt)
-            {
-              ctx.beginPath();                    
-              ctx.fillStyle = "#888";
-              ctx.arc(pt.x ,
-                      pt.y ,
-                      4, 0, Math.PI*2, false);
-              ctx.fill();
-            }
-            
-            oldDraw.call(ship, ctx);
-        };        
+      
+      var pt = ctrl.way[ctrl.wayCnt];
+      if (pt)
+      {
+        ctx.beginPath();                    
+        ctx.fillStyle = "#888";
+        ctx.arc(pt.x ,
+                pt.y ,
+                4, 0, Math.PI*2, false);
+        ctx.fill();
+      }
+      
+      this._super(ctx);
+    },
+xxxfromSvg:
+    function(world, $elem, name)
+    {
+        var data = this.readCircleData($elem);
+        aliens[$elem[0].id] = new Alien(world, data.x, data.y);
+    },
+getAlienbyId:
+    function(id)
+    {
+        return aliens[id];
     },
 setWayPoint:
     function(idx,x,y)
@@ -139,15 +141,15 @@ setWayPoint:
         //console.debug("add way point #%d = %d,%d", idx, x,y);
         this.way[idx] = new Vector2D(x,y);
     },
-plan:
-    function(oldMove)
+move:
+    function()
     {
-        var pos = this.ship.pos;
-        var dx = this.ship.dx; 
-        var dy = this.ship.dy; 
+        var pos = this.pos;
+        var dx = this.dx; 
+        var dy = this.dy; 
         
         
-        var box = this.ship.pos.substract(this.awarenessRadius,this.awarenessRadius);
+        var box = this.pos.substract(this.awarenessRadius,this.awarenessRadius);
         box.w = box.h = this.awarenessRadius + this.awarenessRadius;
         var objects = this.world.rtree.search(box);
         
@@ -189,7 +191,7 @@ plan:
             }
         };
         
-        this.ship.checked = [];
+        this.checked = [];
         
         var moveAngle = Math.floor(Math.atan2(dy,dx));
         
@@ -200,7 +202,7 @@ plan:
             {
                 var ptClose = closestPointOnLineSegment(pos, obj.pt0, obj.pt1).substract(pos);
                 addHeat.call(this,ptClose, moveAngle);
-                this.ship.checked.push(obj);
+                this.checked.push(obj);
             }
         }
 
@@ -217,10 +219,10 @@ plan:
         }
 
         var angle = maxSlot * RAD_PER_SLICE;
-        var r = this.ship.radius;
+        var r = this.radius;
         var vThrust = new Vector2D( Math.cos(angle) * r, Math.sin(angle) * r);
 
-        this.ship.heat = heat;
+        this.heat = heat;
         
         
         /**/
@@ -253,7 +255,7 @@ plan:
         
         if (max > 0.4)
         {
-            this.ship.thrustPoint = pos.add(vThrust);
+            this.thrustPoint = pos.add(vThrust);
         }
         else
         {
@@ -279,7 +281,7 @@ plan:
                 
                 if (vDelta.length() > 30)
                 {                
-                    this.ship.thrustPoint = pos.substract(vDelta);
+                    this.thrustPoint = pos.substract(vDelta);
                 }
                 else
                 {
@@ -293,18 +295,16 @@ plan:
             }
             else
             {
-                this.ship.thrustPoint = null;
+                this.thrustPoint = null;
             }
         }
 
         if (dy > 0.7)
         {
-            this.ship.thrustPoint = pos.add(0,20);
+            this.thrustPoint = pos.add(0,20);
         }
-            
-        
-        oldMove.call(this.ship);
-        
+
+        this._super();
     }
 });
 

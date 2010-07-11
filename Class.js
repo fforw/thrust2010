@@ -54,6 +54,10 @@
     // And make this class extendable
     Class.extend = arguments.callee;
    
+    if (Class.prototype.onTypeCreation)
+    {
+        Class.prototype.onTypeCreation();
+    }
     return Class;
   };
 })();
