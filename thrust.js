@@ -3,7 +3,7 @@ var paper, world, player;
 {
     
 var FRAMES_PER_SECOND = 24;
-var STEPS_PER_SECOND = 25;
+var STEPS_PER_SECOND = 24;
 
 var STEP_TIME = 1000 / STEPS_PER_SECOND;
 var FRAME_TIME = 1000 / STEPS_PER_SECOND;
@@ -52,15 +52,22 @@ init:
             } 
         }
     
-        var levelURL = getParameter("level") || "levels/cave.svg";
+        var levelParam = getParameter("level");
+        var level = +( levelParam || 0);
     
         world = new World("teh_canvas");
+        world.level = level;
         world.overview = !!(getParameter("overview") || false);
-        
+
+        if (levelParam)
+        {
+            world.score = +($.cookies.get("thrust2010_score", 0));
+        }
+            
         var delayed = [];
         
         $.ajax({
-            url: levelURL, 
+            url: Thrust.levels[level], 
             dataType: "xml", 
             success:function(data) 
             { 
@@ -133,6 +140,13 @@ init:
                 world.insertLineBox(botRgt,botRgt.substract(w,0));
                 world.insertLineBox(botRgt,botRgt.substract(0,h));
                 
+                
+                for ( var i = 0, len = world.objects.length; i < len; i++)
+                {
+                    var obj = world.objects[i];
+                    obj.message("prepare");
+                }
+                
                 animationTime = (new Date()).getTime();
                 var lastFrame = animationTime;
                 (function mainLoop()
@@ -146,8 +160,6 @@ init:
                     }
                     world.step();
                     world.draw();
-                    
-                    
                     
                     var wait = (lastFrame + FRAME_TIME) - (new Date()).getTime();
                     if (wait < 1)

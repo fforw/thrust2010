@@ -69,6 +69,8 @@ span.nav
 </script>
 <script type="text/javascript" src="jquery-1.4.2.min.js">
 </script>
+<script type="text/javascript" src="jquery.cookies.js">
+</script>
 <script type="text/javascript" src="Class.js">
 </script>
 <script type="text/javascript" src="vecmath.js">
@@ -81,18 +83,22 @@ span.nav
 </script>
 <script type="text/javascript" src="thrust.js">
 </script>
+<script type="text/javascript" src="levels.js">
+</script>
 
 </head>
 <body>
 <div id="header">
 	<form action="index.html" method="get">
 	<h1>Thrust 2010</h1>
+	<div id="cheat" style="display: none">
 	<select id="levelSelector" name="level" class="nav">
 		<option>Choose Level</option>
 		<option>levels/cave.svg</option>
 		<option>levels/cave2.svg</option>
 		<option>levels/cave3.svg</option>
 	</select> 
+	</div>
 	<a class="nav" href="help.html">Instructions</a>
 	<a class="nav" href="thrust-current.zip">Download .ZIP</a>
 	</form>

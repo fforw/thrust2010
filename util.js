@@ -64,8 +64,15 @@ this.parseSubPaths=function(pathData)
                 x=0;
                 y=0;
                 break;
+            default:
+                idx++;
+                console.error("Unknown cmd " + cmd);
         }
-    
+    }
+
+    if (points.length)
+    {
+        paths.push(points);
     }
     
     return paths;

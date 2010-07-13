@@ -203,6 +203,15 @@ init:
         
         this.gravs = [];
    },
+checkNextLevel:
+    function()
+    {
+       if (this.scoreObjsCount == 0)
+       {
+           jQuery.cookies.set("thrust2010_score", this.score); 
+           document.location.href = "index.html?level=" + (++this.level);
+       }
+    },
 insertLineBox: 
     function(pt0, pt1)
     {
@@ -284,14 +293,27 @@ doLocalGravity:
            obj.dy += this.gravity;
        }
     },
+scoreObjsCount: 0,
 addObject:
     function(obj)
     {
         this.objects.push(obj);
+        
+        if (obj.score)
+        {
+            this.scoreObjsCount++;
+        }
     },
 removeObject:
     function(obj)
     {
+        var objScore = obj.score;
+        if (objScore)
+        {
+            this.score += (typeof objScore === "number" ? objScore : objScore.call(obj));
+            this.scoreObjsCount--;
+        }
+
         obj.message("remove");
                 
         removeFromArray(this.objects, obj);
@@ -301,7 +323,6 @@ removeObject:
         {
             this.rtree.remove(box, obj);
         }
-        
     },
 createSubPaths:
     function(pathData,style)
@@ -379,6 +400,7 @@ createSubPaths:
     },    
 width: 1000,
 height: 1000,
+score: 0,
 ox:0,oy:0,
 
 step:
@@ -445,6 +467,12 @@ draw:
             this.drawOutsideBox(this.ctx, canvasWidth, canvasHeight);
         }
         
+        
+        ctx.save();
+        ctx.fillStyle = "#fff";
+        ctx.font = "15px sans-serif";
+        ctx.fillText("Score: " + this.score, 10, 20);
+        ctx.restore();
     },
 drawOutsideBox:
     function(ctx, canvasWidth, canvasHeight)
@@ -564,12 +592,10 @@ fromSvg:
     {
         if (name === "#scene")
         {
-            console.debug("%s is #scene", name);
             var pathData = $elem.attr("d");
             world.createSubPaths(pathData, this.readStyle($elem));
             return true;
         }
-        console.debug("%s is not #scene", name);
         return false;
     },
 draw:
@@ -845,6 +871,10 @@ move:
 
                     this.translate(align.x * 0.3, align.y * 0.3);
                 }
+                else
+                {
+                    this.world.checkNextLevel();
+                }
             }
         }
         
@@ -1055,7 +1085,6 @@ init:
     function(world, x, y)
     {
         this.pos = new Vector2D(x,y);
-        this.fillColor = "#5a6";
         
         var candidates = world.rtree.search({x: x - 25, y: y - 50, w: 50, h:100});
         var best = findClosestPointInCandidates(candidates, this.pos);
@@ -1078,15 +1107,13 @@ init:
 fromSvg:
     function(world, $elem, name)
     {
-        if (name.indexOf("#start") == 0)
+        if (name.indexOf("#start") === 0)
         {
+            console.debug("is #start");
             return function() {
+                console.debug("create base");
                 var base = new Base(world, (+$elem.attr("x")), (+$elem.attr("y")));
-                
-                if ((base.main = name === "#start"))
-                {
-                    world.base = base; 
-                }  
+                world.base = base; 
             };
         }
         return false;
@@ -1112,6 +1139,7 @@ getBBox:
 //}
 
 this.Sentinel = GameObject.extend({
+score: 200,    
 init:
     function(world,x,y,r)
     {
@@ -1269,6 +1297,11 @@ init:
         this.zIndex = 2;
         this.weight = 100;
         this.world.rtree.insert(this.getBBox(), this);
+    },
+score:
+    function()
+    {
+        return this.atBase === 0 ? 1000 : 0; 
     },
 fromSvg:
     function(world, $elem, name)
@@ -1476,5 +1509,5 @@ doGravity:
    }
 });
 
-})();
+})(window,jQuery);
 

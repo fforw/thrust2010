@@ -12,6 +12,26 @@ function normAngle(angle)
     return angle > 0 ? angle : CIRCLE_RAD + angle;
 }
 
+function findProximity(point, pts)
+{
+    var mdSq = 100;
+    
+    for ( var i = 0, len = pts.length; i < len; i++)
+    {
+        var pt = pts[i];
+        
+        var x = point.x - pt.x;
+        var y = point.y - pt.y;
+        
+        if (x * x + y * y < mdSq)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
 function nextSlot(n)
 {
     if (n == SLICES - 1)
@@ -43,6 +63,7 @@ function createHeatMap()
 var aliens = {};
 
 this.Alien = Ship.extend({
+score: 300,    
 init:
     function(world,x,y)
     {
@@ -50,8 +71,70 @@ init:
 
         this.awarenessRadius = 100;
         
-        this.way = [ this.pos.clone()];
-        this.wayCnt = 0;
+        this.paths = [];
+        
+    },
+nextWayPoint:
+    function()
+    {
+        var linkedTo = this.currentWayPoint().linkedTo;
+        if (this.pathPos.dir > 0 && linkedTo)
+        {
+            var idx = linkedTo.idx;
+            var path = linkedTo.path;
+            var dir = idx == 0 ? 1 : -1;
+            var newPos = { parent: this.pathPos, idx: idx + dir, path: path, dir: dir, entered: idx};
+            this.pathPos = newPos;
+            return;
+        }
+
+        var pos = this.pathPos;
+        var max = this.paths[pos.path].length - 1;
+
+        if (pos.idx === pos.entered)
+        {
+            this.pathPos = this.pathPos.parent;
+            this.pathPos.idx += this.pathPos.dir; 
+        }
+
+        if (pos.dir < 0)
+        {
+            if (pos.idx == 0)
+            {
+                pos.dir = 1;
+            }
+        }        
+        else
+        {
+            if (pos.idx == max)
+            {
+                pos.dir = -1;
+            }
+        }
+        
+        pos.idx += pos.dir;
+    },
+currentWayPoint:
+    function()
+    {
+        var pos = this.pathPos;
+        
+        var pt = this.paths[pos.path][pos.idx];
+        if (!pt)
+        {
+            console.debug("No way point for %s:%d", pos.path, pos.idx);
+        }
+        
+        return pt;
+    },
+prepare:
+    function()
+    {
+        if (this.paths.length)
+        {        
+            this.pathPos = { idx : 0, path: 0, dir: 1 };
+            this.pos = this.currentWayPoint();
+        }
     },
 draw:
     function(ctx)
@@ -110,8 +193,8 @@ draw:
 //      }
 //      
 //
-      
-      var pt = ctrl.way[ctrl.wayCnt];
+      var pos = this.pathPos;
+      var pt = this.paths[pos.path][pos.idx];
       if (pt)
       {
         ctx.beginPath();                    
@@ -124,22 +207,97 @@ draw:
       
       this._super(ctx);
     },
-xxxfromSvg:
+fromSvg:
     function(world, $elem, name)
     {
-        var data = this.readCircleData($elem);
-        aliens[$elem[0].id] = new Alien(world, data.x, data.y);
+        var m;
+        if (name === "#alien")
+        {
+            var data = this.readCircleData($elem);
+            aliens[$elem[0].id] = new Alien(world, data.x, data.y);
+            return true;
+        }
+        else if (m = /^\#way-([^-]*)-(\d+)$/.exec(name))
+        {
+            var id = m[1];
+            var idx = +m[2];
+            var pathData = $elem.attr("d");
+            
+            return function() {
+                
+                var pointsArray = parseSubPaths(pathData);
+                console.debug("alient path: %s", pathData);
+                
+                for ( var i = 0, len = pointsArray.length; i < len; i++)
+                {
+                    var points = pointsArray[i];
+                    var alien = Alien.prototype.getAlienbyId(id);
+                    alien.addWayPath(points);
+                }
+            };
+        }
+        return false;
     },
 getAlienbyId:
     function(id)
     {
         return aliens[id];
     },
-setWayPoint:
-    function(idx,x,y)
+link:
+    function(pt,path, idx)
     {
-        //console.debug("add way point #%d = %d,%d", idx, x,y);
-        this.way[idx] = new Vector2D(x,y);
+        if (idx >= 0)
+        {
+            var linkedTo = { path: path, idx: idx } ;
+            console.debug("link %o to %o", pt, linkedTo);
+            pt.linkedTo = linkedTo ;
+        }
+    },
+linkToPaths:
+    function(pt, path, index)
+    {
+        for ( var i = 0, len = this.paths.length; i < len; i++)
+        {
+            if (i != path)
+            {
+                var points = this.paths[i];
+                
+                var idx = findProximity(pt, points);
+                if (idx >= 0)
+                {           
+                    this.link( points[idx], path, index);
+                }
+            }
+        }
+    },
+addWayPath:
+    function(points)
+    {
+        
+        var nextPath = this.paths.length; 
+        var last = points.length - 1; 
+        this.linkToPaths(points[0], nextPath, 0);
+        this.linkToPaths(points[last], nextPath, last);
+        this.paths[nextPath] = points;
+
+        for ( var i = 0; i < nextPath; i++)
+        {
+            var pathPoints = this.paths[i];
+            
+            var idx = findProximity(pathPoints[0], points);
+            if ( idx >= 0)
+            {
+                this.link( points[idx], i, 0);
+            }
+            
+            last = pathPoints.length - 1;
+            idx = findProximity(pathPoints[last], points);
+            if ( idx >= 0)
+            {
+                this.link( points[idx], i, last);
+            }
+        }
+        
     },
 move:
     function()
@@ -253,7 +411,7 @@ move:
             }
         }
         
-        if (max > 0.4)
+        if (max > 0.45 )            
         {
             this.thrustPoint = pos.add(vThrust);
         }
@@ -262,7 +420,7 @@ move:
             var vMove = new Vector2D(dx,dy);
             var thrustToWayPoint = vMove.length() < 1.15;
             
-            var pt = this.way[this.wayCnt];
+            var pt = this.currentWayPoint();
 
             if (!thrustToWayPoint)
             {
@@ -285,12 +443,8 @@ move:
                 }
                 else
                 {
-                    this.wayCnt++;
-                    if (this.wayCnt == this.way.length)
-                    {
-                        this.wayCnt = 0;
-                    }
-                    console.debug("next way point: %o", this.way[this.wayCnt]);
+                    this.nextWayPoint();
+                    return this.move();
                 }
             }
             else
