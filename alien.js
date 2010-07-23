@@ -69,10 +69,18 @@ init:
     {
         this._super(world,x,y);
 
-        this.awarenessRadius = 100;
+        this.type = "alien";
+        this.awarenessRadius = 120;
         
         this.paths = [];
-        
+        this.avoidCount = 0;
+        this.reload = 0;
+        this.reloadTime = 500;
+    },
+feelGravity:    
+    function(gravity)
+    {
+        this.lastGravity = gravity;
     },
 nextWayPoint:
     function()
@@ -136,9 +144,9 @@ prepare:
             this.pos = this.currentWayPoint();
         }
     },
-draw:
-    function(ctx)
-    {
+//draw:
+//    function(ctx)
+//    {
 //      if (ship.heat)
 //      {
 //          for ( var i = 0, angle = 0, len = ship.heat.length; i < len; i++, angle += RAD_PER_SLICE)
@@ -193,20 +201,20 @@ draw:
 //      }
 //      
 //
-      var pos = this.pathPos;
-      var pt = this.paths[pos.path][pos.idx];
-      if (pt)
-      {
-        ctx.beginPath();                    
-        ctx.fillStyle = "#888";
-        ctx.arc(pt.x ,
-                pt.y ,
-                4, 0, Math.PI*2, false);
-        ctx.fill();
-      }
-      
-      this._super(ctx);
-    },
+//      var pos = this.pathPos;
+//      var pt = this.paths[pos.path][pos.idx];
+//      if (pt)
+//      {
+//        ctx.beginPath();                    
+//        ctx.fillStyle = "#888";
+//        ctx.arc(pt.x ,
+//                pt.y ,
+//                4, 0, Math.PI*2, false);
+//        ctx.fill();
+//      }
+//      
+//      this._super(ctx);
+//    },
 fromSvg:
     function(world, $elem, name)
     {
@@ -223,10 +231,14 @@ fromSvg:
             var idx = +m[2];
             var pathData = $elem.attr("d");
             
+            var that = this;
+            
             return function() {
                 
-                var pointsArray = parseSubPaths(pathData);
-                console.debug("alient path: %s", pathData);
+                var transform = that.parseTransform($elem) || new Vector2D(0,0);
+                
+                console.debug("transform of %x is %o", $elem, transform);
+                var pointsArray = parseSubPaths(pathData, transform.x, transform.y);
                 
                 for ( var i = 0, len = pointsArray.length; i < len; i++)
                 {
@@ -314,35 +326,40 @@ move:
         // circular heat map in 1/16th circle units
         var slot, ratio, heat = createHeatMap();
 
-        var addHeat = function(v, moveAngle)
+        var addHeat = function(v, moveAngle, energy)
         {
             var dist = v.length();
 
+            var angleRestricted = moveAngle !== undefined;
+            
             if (dist < this.awarenessRadius)
             {
                 var angle = normAngle(Math.atan2(v.y,v.x));
                 
-                var angleDelta = moveAngle - angle;
-                
-                while (angleDelta < -Math.PI)
+                if (angleRestricted)
                 {
-                    angleDelta += CIRCLE_RAD;
-                }
-
-                while (angleDelta > Math.PI)
-                {
-                    angleDelta -= CIRCLE_RAD;
+                    var angleDelta = moveAngle - angle;
+                    
+                    while (angleDelta < -Math.PI)
+                    {
+                        angleDelta += CIRCLE_RAD;
+                    }
+    
+                    while (angleDelta > Math.PI)
+                    {
+                        angleDelta -= CIRCLE_RAD;
+                    }
                 }
                 
                 
-                if (Math.abs(angleDelta) < 2)
+                if (!angleRestricted || Math.abs(angleDelta) < 2)
                 {
                     var slot = Math.floor(angle / RAD_PER_SLICE);
                     var ratio = (angle - slot * RAD_PER_SLICE) / RAD_PER_SLICE;
                     var slot2 = nextSlot(slot);
                     
                     // spread heatmap energy over 2 adjacent cells
-                    var energy = 1000 / (dist * dist * 0.5);
+                    var energy = (energy || 1000) / (dist * dist * 0.5);
                     heat[slot] += ratio * energy;
                     heat[slot2] += (1 - ratio) * energy;
                 }
@@ -361,6 +378,49 @@ move:
                 var ptClose = closestPointOnLineSegment(pos, obj.pt0, obj.pt1).substract(pos);
                 addHeat.call(this,ptClose, moveAngle);
                 this.checked.push(obj);
+            }
+            else if (!this.avoidCount && obj.type == "bullet")
+            {
+                var vDelta = obj.pos.substract(this.pos);
+                
+                var vSpeed = new Vector2D(obj.dx,obj.dy);
+                var speed = vSpeed.length();
+                var vMove = vSpeed.multiply(1/speed);
+                
+                var distance = vDelta.length();
+                var vDeltaNorm = vDelta.multiply(1/distance);
+                
+                var dot = vMove.dot(vDeltaNorm);
+                
+                // coming at us?
+                if (dot < -0.8)
+                {
+//                        var alpha = Math.acos(dot);
+//                        var beta = Math.PI - 2 * alpha;
+//                        
+//                        var x = distance / Math.sin(beta) * Math.sin(alpha);
+                    
+                    //this.shoot(vMove.multiply(x).add(obj.pos));
+                    
+                    this.avoidCount = 5; 
+                }
+
+                if (clockwise(this.pos, obj.pos, obj.pos.add(obj.dx,obj.dy)))
+                {
+                    this.vAvoid = this.pos.add(obj.dy * 10 ,-obj.dx * 10);
+                }
+                else
+                {                        
+                    this.vAvoid = this.pos.add(-obj.dy * 10 ,obj.dx * 10);
+                }
+            }
+            else if (!this.reload && obj.type == "player")
+            {
+                var factor = obj.pos.substract(this.pos).length() / 3;
+                
+                var vShoot = new Vector2D(obj.dx,obj.dy).multiply(factor).add(obj.pos);
+                this.shoot(vShoot);
+                this.reload = this.reloadTime;
             }
         }
 
@@ -382,35 +442,16 @@ move:
 
         this.heat = heat;
         
-        
-        /**/
-        function thrustForce(point)
+        if (this.avoidCount)
         {
-            var angle = Math.atan2(point.y,point.x);
-    
-            var weight = this.weight;
-            var cos = Math.cos(angle);
-            var sin = Math.sin(angle);
-            
-            var ddx = cos * this.thrustPower / weight / 1000;
-            var ddy = sin * this.thrustPower / weight / 1000;
-    
-            return  new Vector2D(ddx,ddy);
+            this.avoidCount--;
         }
-        
-        function inLimit(pt)
+
+        if (this.reload)
         {
-            var len = pt.length();
-            if (pt.y > 0)
-            {
-                return len < 0.5;
-            }
-            else 
-            {
-                return len < 1;
-            }
+            this.reload--;
         }
-        
+    
         if (max > 0.45 )            
         {
             this.thrustPoint = pos.add(vThrust);
@@ -418,27 +459,41 @@ move:
         else
         {
             var vMove = new Vector2D(dx,dy);
-            var thrustToWayPoint = vMove.length() < 1.15;
+            var movingSpeed = vMove.length();
+            var thrustToWayPoint = movingSpeed < 1.15;
             
             var pt = this.currentWayPoint();
 
+            var vDelta = pt.substract(pos);
+            var distToWayPoint = vDelta.length();
             if (!thrustToWayPoint)
             {
-                var delta1 = pt.substract(pos);
-                var delta2 = delta1.substract(dx,dy);
+                var v1 = vDelta.multiply(1/distToWayPoint)
+                var v2 = new Vector2D(dx,dy).norm();
                 
-                if (delta2.length() > delta1.length())
+                if (v1.dot(v2) < 0.9)
                 {
                     thrustToWayPoint = true;
                 }
             }
             
-            if (thrustToWayPoint)
+            if (thrustToWayPoint && !this.avoidCount)
             {
-                var vDelta = pt.substract(pos).substract(dx,dy);
-                
-                if (vDelta.length() > 30)
-                {                
+                if (distToWayPoint > 30)
+                {      
+                    var power = this.calculateThrustPower();
+                    
+                    vDelta = vDelta.multiply( power / distToWayPoint);
+                    
+                    if (movingSpeed > 1)
+                        vDelta = vDelta.substract(dx,dy);
+                    
+                    if (this.lastGravity)
+                    {
+                        vDelta = vDelta.substract(this.lastGravity);
+                    }
+                    
+                    
                     this.thrustPoint = pos.substract(vDelta);
                 }
                 else
@@ -449,13 +504,17 @@ move:
             }
             else
             {
-                this.thrustPoint = null;
+                this.thrustPoint = this.avoidCount ?  this.vAvoid : null;
             }
         }
 
-        if (dy > 0.7)
+        if (this.lastGravity)
         {
-            this.thrustPoint = pos.add(0,20);
+            var v = new Vector2D(dx,dy).projectOnto(this.lastGravity);
+            if ( v.isSameDirection(this.lastGravity) && v.length() > 0.7 )
+            {
+                this.thrustPoint = pos.substract(this.lastGravity);
+            }
         }
 
         this._super();

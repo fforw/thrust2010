@@ -35,6 +35,23 @@ function getParameter(name)
     }
 }
 
+function convert(s)
+{
+    var m = /^(\d+)\:(-?\d+)$/.exec(s);
+    if (m)
+    {
+        var level = +m[1];
+        var chk = +m[2];
+        if (chk != chksum(Thrust.levels[level]))
+        {
+            return 0;
+        }
+        
+        return level;
+    }
+    
+}
+
 var $canvas, canvasOffset, animationTime = null;
 
 window.Thrust = {
@@ -53,15 +70,19 @@ init:
         }
     
         var levelParam = getParameter("level");
-        var level = +( levelParam || 0);
+        var level = +( convert(levelParam) || 0);
     
         world = new World("teh_canvas");
         world.level = level;
         world.overview = !!(getParameter("overview") || false);
 
+        window.world = world;
+        
         if (levelParam)
         {
-            world.score = +($.cookies.get("thrust2010_score", 0));
+            var data = JSON.parse($.cookies.get("thrust2010_data") || "{\"score\":0,\"lives\":5}");
+            world.score = data.score;
+            world.lives = data.lives;
         }
             
         var delayed = [];
@@ -77,12 +98,13 @@ init:
                 
                 var svgFactories = SvgFactory.prototype.getRegistered();
                 
-                console.debug("svgFactories = %o", svgFactories);
-                console.debug("polex = %o", Polygon.extend);
+                //console.debug("svgFactories = %o", svgFactories);
                 
                 $("path,rect", data.documentElement).each(function(){
                     
                     var $elem = $(this);
+                
+                    console.debug($elem);
                     
                     var name = $elem.attr("inkscape:label");
                     var worldBBox = new BBox();
@@ -189,7 +211,8 @@ init:
         {
             if (ev.button == 2 || ev.ctrlKey)
             {
-                player.shoot(new Vector2D(ev.pageX,ev.pageY).substract(canvasOffset));
+                var point = world.fromScreen(new Vector2D(ev.pageX,ev.pageY).substract(canvasOffset));
+                player.shoot(point);
                 return false;
             }
             else
@@ -244,9 +267,16 @@ init:
             }
         });
         
+        var opts = ["<option value=\"\">Choose Level</option>"];
+        for ( var i = 0, len = Thrust.levels.length; i < len; i++)
+        {
+            var level = Thrust.levels[i];
+            opts.push("<option value=\"", i , ":" , chksum(level), "\">", level, "</option>" );
+        }
+        
         $("#levelSelector").change(function(ev){
             document.location.href = "index.html?level=" + this.value;
-        });
+        }).append($(opts.join("")));
     }
 };
     

@@ -1,8 +1,8 @@
 (function(){
     
-this.parseSubPaths=function(pathData)
+this.parseSubPaths=function(pathData, xOff, yOff)
 {
-    var x=0, y=0, idx = 0;
+    var idx = 0;
     var data = pathData.split(/[ ,]/);
     var len = data.length;
     
@@ -75,6 +75,25 @@ this.parseSubPaths=function(pathData)
         paths.push(points);
     }
     
+    if (xOff !== undefined || yOff !== undefined)
+    {
+        x = xOff || 0;
+        y = yOff || 0;
+        
+        console.debug("path offset x: %d, y: %d", x,y);
+        
+        for ( var i = 0, len = paths.length; i < len; i++)
+        {
+            var points = paths[i];
+            for ( var j = 0, len2 = points.length; j < len2; j++)
+            {
+                var pt = points[j];
+                pt.x += x;
+                pt.y += y;
+            }
+        }
+    }
+    
     return paths;
 };
 
@@ -129,6 +148,16 @@ this.removeFromArray = function(array,obj)
     {
         array.splice(idx,1);
     }
+};
+
+this.chksum = function(s)
+{
+    var chk = 0xBAB3CAFE;
+    for (var i=0, len = s.length; i < len; i++)
+    {
+        chk = (chk ^ (s.charCodeAt(i) * 69069)) & 0xffffffff;
+    }    
+    return chk;
 };
 
 })();

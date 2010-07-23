@@ -208,8 +208,16 @@ checkNextLevel:
     {
        if (this.scoreObjsCount == 0)
        {
-           jQuery.cookies.set("thrust2010_score", this.score); 
-           document.location.href = "index.html?level=" + (++this.level);
+           jQuery.cookies.set("thrust2010_data", "{ \"score\": " + this.score + ",\"lives\": " + this.lives+ "}");
+           
+           ++this.level;
+           var max = Thrust.levels.length - 1;
+           if (this.level >= max)
+           {
+               this.level = max;
+           }
+           
+           document.location.href = "index.html?level=" + this.level + ":" + chksum(Thrust.levels[this.level]);
        }
     },
 insertLineBox: 
@@ -275,6 +283,7 @@ addGravSource:
 doLocalGravity:
     function(obj)
     {
+        
        var inLocal = false;
        for ( var i = 0, len = this.gravs.length; i < len; i++)
        {
@@ -283,9 +292,13 @@ doLocalGravity:
             if (obj.pos.x >= box.x && obj.pos.x < box.x + box.w &&  
                 obj.pos.y >= box.y && obj.pos.y < box.y + box.h)
             {
-                grav.doGravity(obj);
-                inLocal = true;
-                break;
+                var old = obj.pos.clone();
+                var did = grav.doGravity(obj);
+                if (did)
+                {
+                    inLocal = true;
+                    break;
+                }
             }
        }
        if (!inLocal)
@@ -401,6 +414,7 @@ createSubPaths:
 width: 1000,
 height: 1000,
 score: 0,
+lives: 5,
 ox:0,oy:0,
 
 step:
@@ -412,7 +426,14 @@ step:
             obj.message("move");
             if (obj.gravityBound)
             {
+                var old = obj.pos;
                 this.doLocalGravity(obj);
+                
+                if (obj.feelGravity)
+                {
+                    var delta = obj.pos.substract(old);
+                    obj.feelGravity(delta);
+                }
             }
         }
     },
@@ -467,11 +488,23 @@ draw:
             this.drawOutsideBox(this.ctx, canvasWidth, canvasHeight);
         }
         
-        
         ctx.save();
         ctx.fillStyle = "#fff";
-        ctx.font = "15px sans-serif";
-        ctx.fillText("Score: " + this.score, 10, 20);
+        ctx.font = "15px sans-serif bold";
+        ctx.fillText("Score: " + this.score, 80, 20);
+        
+        if (this.lives < 0)
+        {
+            ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2);
+        }
+
+        ctx.fillStyle = "#008";
+        for (var i=0; i < this.lives; i++)
+        {
+            ctx.beginPath();
+            ctx.arc(10 + i * 15, 15, 5, 0, Math.PI*2, false);
+            ctx.fill();
+        }
         ctx.restore();
     },
 drawOutsideBox:
@@ -575,11 +608,11 @@ this.Polygon = GameObject.extend({
             console.debug("points = %o", points)
         }
     
-        this._super(world);
-        
+        this.world = world;
         this.pos = this.pos || new Vector2D(0,0);
         this.points = points;
         this.zIndex = 1;
+        this.type = "scene";
         this.style = style || { "strokeStyle" : "#eee", fillStyle: "#444"};
         
         if (!noRegister)
@@ -681,11 +714,9 @@ init: function(world,initX,initY)
         this.reset();
         this.type = "player";
         this.zIndex = 2;
+        this.radius = 15;
         
-        this.tractorThreshold = 0.4;
         this.tractorMax = 64;
-        this.tractorPow = 3.5;
-        this.tractorPull = 0.005;
         this.weight= 2300;
         this.gravityBound = true;
         
@@ -694,6 +725,10 @@ init: function(world,initX,initY)
 reset:
     function()
     {
+        this.world.checkNextLevel();
+        
+        if (--this.world.lives >= 0)
+        {
         //var paper = this.world.paper;
         //this.canvasObjs[0] = paper.circle(0, 0, 10);
         
@@ -713,6 +748,13 @@ reset:
 //            "cx" : this.pos.x , 
 //            "cy" : this.pos.y});
         
+        if (this.connected)
+        {
+            this.connected.connected = false;
+            this.connected = null;
+        }
+        this.thrustPoint = null;
+        }
     },
 explode: 
     function(pos)
@@ -766,7 +808,18 @@ getBBox:
     function()
     {
         return outerBox(this.pos, this.radius);
-    },    
+    },   
+calculateThrustPower:
+    function()
+    {
+        var weight = this.weight;
+        var connected = this.connected;
+        if (connected)
+        {
+            weight += connected.weight;
+        }
+        return this.thrustPower / weight / 1000;
+    },
 move:
     function()
     {
@@ -776,25 +829,14 @@ move:
         var point = this.thrustPoint; 
         if (point)
         {
-            var deltaX = this.pos.x - point.x;
-            var deltaY = this.pos.y - point.y;
+            var delta = new Vector2D(this.pos.x - point.x, this.pos.y - point.y).norm();
             
-            var angle = Math.atan2(deltaY, deltaX);
-            //console.debug("angle = %d", angle );
 
-            var weight = this.weight;
+            var power = this.calculateThrustPower();
+            var ddx = delta.x * power;
+            var ddy = delta.y * power;
+
             var connected = this.connected;
-            if (connected)
-            {
-                weight += this.connected.weight;
-            }
-
-            var cos = Math.cos(angle);
-            var sin = Math.sin(angle);
-            
-            var ddx = cos * this.thrustPower / weight / 1000;
-            var ddy = sin * this.thrustPower / weight / 1000;
-
             if (connected)
             {
                 // tractor beam from the cargo to the player
@@ -891,18 +933,24 @@ move:
         this.translate(this.dx,this.dy);
 
         var dist = this.radius + 1;
-        this.thrusterPos = this.thrustPoint ? this.pos.substract(cos * dist, sin * dist) : null;
+        this.thrusterPos = this.thrustPoint ? this.pos.substract(delta.x * dist, delta.y * dist) : null;
     },
 thrust:
     function(point)
     {
+        if (this.dead)
+        {
+            return;
+        }
         this.thrustPoint = this.world.fromScreen(point);
     },
 shoot:
     function(point)
     {
-        point = this.world.fromScreen(point);
-            
+        if (this.dead)
+        {
+            return;
+        }
         var angle = point.angleTo(this.pos);
         new Bullet(this.world, this.pos.add( 
                 this.dx + this.radius * Math.cos(angle), 
@@ -989,9 +1037,23 @@ move:
                 {
                     case "sentinel":
                     case "player":
+                    case "alien":
                         if (obj.pos.substract(this.pos).length() < obj.radius * 0.95)
                         {
                             obj.explode(this.pos.clone());
+                            this.world.removeObject(this);
+                            return;
+                        }
+                        break;
+                    case "bullet":
+                        if (obj.pos.substract(this.pos).length() < obj.radius)
+                        {
+                            if (obj !== this)
+                            {
+                                this.world.removeObject(obj);
+                                this.world.removeObject(this);
+                                return;
+                            }
                         }
                         break;
                 }
@@ -1222,6 +1284,7 @@ init:
         this.ctx = ctx;
         this.count = 3;
         this.zIndex = 2;
+        this.type="explosion";
         
         this.subs = [];
         
@@ -1475,6 +1538,7 @@ init:
         this.pos = new Vector2D(x,y);
         this.radius = r;
         this.force = 600;
+        this.type="gravpoint";
         world.addGravSource(this);
     },
 getBBox:
@@ -1493,7 +1557,6 @@ fromSvg:
         }
         return false;
     },
-    
 doGravity:
    function(obj)
    {
@@ -1505,9 +1568,107 @@ doGravity:
             var dSquared = distance * distance;
             obj.dx += vNorm.x * this.force  / dSquared; 
             obj.dy += vNorm.y * this.force / dSquared; 
+            return true;
         }
+        return false;
    }
 });
+
+this.GravBox = GameObject.extend({
+init:
+    function(world, pt0, pt1, h, clockwisity)
+    {
+        this.world = world;
+        this.pt0 = pt0;
+        this.pt1 = pt1;
+        this.height = h;
+        this.clockwisity = clockwisity;
+        this.force = 50;
+        
+        this.type = "gravbox";
+
+        this.box = new BBox();
+        
+        var v = pt1.substract(pt0).norm().multiply(h);
+
+        console.debug("gravbox v = %o", v);
+        
+        var ext0 = pt0.substract(v);
+        var ext1 = pt1.add(v);
+        
+        var vRot = this.clockwisity ? new Vector2D(-v.y, v.x) : new Vector2D(v.y, -v.x) ; 
+        
+        var ext2 = ext0.add(vRot);
+        var ext3 = ext1.add(vRot);
+        
+//        new Marker(ext0.x,ext0.y);
+//        new Marker(ext1.x,ext1.y);
+//        new Marker(ext2.x,ext2.y);
+//        new Marker(ext3.x,ext3.y);
+        
+        this.box.extend(ext0,ext1,ext2,ext3);
+        
+        world.addGravSource(this);
+    },
+getBBox:
+    function()
+    {
+        return this.box;
+    },
+fromSvg:
+    function(world, $elem, name)
+    {
+        if (name === "#gravbox")
+        {
+            var pathData = $elem.attr("d");
+            
+            // points from first sub path
+            var pts = parseSubPaths(pathData)[0];
+            
+            var pt0 = pts[0];
+            var pt1 = pts[1];
+            var clockwisity;
+            
+            var max = 0;
+            for ( var i = 2, len = pts.length; i < len; i++)
+            {
+                var pt = pts[i];
+                
+                var dist = closestPointOnLine(pt, pt0, pt1).substract(pt).length();
+                if (dist > max)
+                {
+                    max = dist;
+                    if (clockwisity === undefined)
+                    {
+                        clockwisity = clockwise(pt0, pt1, pt);
+                    }
+                }
+            }
+            
+            new GravBox(world, pt0, pt1, max, clockwisity);
+            
+            return true;
+        }
+        return false;
+    },
+doGravity:
+    function(obj)
+    {
+        var vLine = closestPointOnLineSegment(obj.pos, this.pt0, this.pt1).substract(obj.pos);
+        var distance = vLine.length();
+        
+        if (distance < this.height && clockwise(this.pt0, this.pt1, obj.pos) == this.clockwisity)
+        {
+            var vNorm = vLine.multiply(1/distance);
+            var dSquared = distance * distance;
+            obj.dx += vNorm.x * this.force  / dSquared; 
+            obj.dy += vNorm.y * this.force / dSquared; 
+            return true;
+        }
+        return false;
+    }
+});
+
 
 })(window,jQuery);
 

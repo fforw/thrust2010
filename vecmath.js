@@ -161,3 +161,20 @@ function closestPointOnLineSegment(pt, a, b)
     return a.add(v.multiply(t));
 }
 
+//a is the first point on the line segment
+//b is the second point on the line segment
+//Point is the point your trying to find
+function closestPointOnLine(pt, a, b)
+{
+  var c = pt.substract(a);
+  
+  var a2b = b.substract(a);
+  
+  var d = a2b.length();
+
+  var v = a2b.multiply(1 / d);
+  
+  var t = v.dot(c);
+  
+  return a.add(v.multiply(t));
+}
