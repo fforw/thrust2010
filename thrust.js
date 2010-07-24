@@ -263,8 +263,9 @@ init:
                 }
             }        
             
-            player.thrust(ev);
             mouseDown = false;
+            console.debug("ev = %o", ev);
+            thrust(ev);
         }).mousemove(function(ev)
         {
             thrust(ev);                
