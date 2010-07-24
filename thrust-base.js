@@ -199,8 +199,12 @@ checkNextLevel:
        {
            jQuery.cookies.set("thrust2010_data", "{ \"score\": " + this.score + ",\"lives\": " + this.lives+ "}");
            
-           // borrow live until reset in new level
-           ++this.lives;
+           // borrow life until reset in new level
+           if (!this.borrowed)
+           {
+               ++this.lives;
+               this.borrowed = true;
+           }
            ++this.level;
            var max = Thrust.levels.length - 1;
            if (this.level >= max)
@@ -418,6 +422,7 @@ width: 1000,
 height: 1000,
 score: 0,
 lives: 5,
+borrowed: false,
 ox:0,oy:0,
 
 step:
