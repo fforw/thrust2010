@@ -90,6 +90,11 @@ Label: #start
 Must be rectangle object. Marks the position of the base/player.
 
 
+Label: #cargo
+
+Cargo unit that must be carried to the base for points.
+
+
 Label: #alien
 Alien ship controlled by AI code. Must have a way path defined to work.
 
@@ -126,12 +131,17 @@ you can change the force default of 500.
 
 Label: #gravbox
 
-A gravbox has an area of linear gravity that can be different from the normal gravity.
-It must be a path set up in a special way: The first two points of the path define
-the gravbox base line which is the line everything gravitates to in the box.
+A gravbox has an area of linear gravity that can be different from the normal 
+gravity. It must be a path set up in a special way: The first two points of 
+the path define the gravbox base line which is the line everything gravitates 
+to in the box.
 
-All further points just define the height of the gravbox and must be on only one side
-of the base line. At the ends, the gravbox is rounded to the height radius.
+All further points just define the height of the gravbox and must be on only 
+one side of the base line. At the ends, the gravbox is rounded to the height 
+radius. 
 
+( See http://github.com/fforw/thrust2010/blob/master/image/gravbox.png for
+  an illustration of this)
 
+You can also set the force via JSON description.
 
