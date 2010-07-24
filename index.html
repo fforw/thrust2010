@@ -60,10 +60,16 @@ body,div
 	float: none;
 	text-decoration: none;
 }
+span.version
+{
+	color: #aaa;
+	font-size: 0.8;
+}
+
 span.nav
 {
 	font-size: 0.9em;
-	font-color: #ddd;
+	color: #ddd;
 	float: right;
 	line-height: 40px;
 	height: 40px;
@@ -93,15 +99,15 @@ span.nav
 </script>
 <script type="text/javascript" src="levels.js">
 </script>
-
 </head>
 <body>
 <div id="header">
 	<form action="index.html" method="get">
 	<h1><a href="index.html">Thrust 2010</a></h1>
+	<span class="version">Version $Id$</span>
 	<div id="cheat" style="display: none">
-	<select id="levelSelector" name="level" class="nav">
-	</select> 
+		<select id="levelSelector" name="level" class="nav">
+		</select> 
 	</div>
 	<a class="nav" href="help.html">Instructions</a>
 	<a class="nav" href="http://github.com/fforw/thrust2010">Github</a>
