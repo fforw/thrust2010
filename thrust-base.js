@@ -1202,7 +1202,10 @@ init:
         var candidates = world.rtree.search({x: x - 25, y: y - 50, w: 50, h:100});
         var best = findClosestPointInCandidates(candidates, this.pos);
 
-//        console.debug("best match = %o", best);
+        if (!best.closest)
+        {
+            throw new Error("No ground below base");
+        }
         
         //new Marker(best.closest.x, best.closest.y);
         
