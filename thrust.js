@@ -227,8 +227,8 @@ init:
             }
         }).mouseup(function(ev)
         {
-            player.thrust(ev);
-            mouseDown = false;
+            mouseDown = false; 
+            thrust(ev);
         }).mousemove(function(ev)
         {
             thrust(ev);                

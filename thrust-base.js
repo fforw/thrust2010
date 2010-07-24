@@ -983,9 +983,11 @@ thrust:
             if (active)
             {
                 this.thrustPoint = this.world.fromScreen(point);
+                this.thrustHelp = null;
             }
             else
             {
+                this.thrustPoint = null;
                 this.thrustHelp = this.world.fromScreen(point);
             }
         }
