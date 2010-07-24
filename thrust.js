@@ -227,7 +227,7 @@ init:
             }
         }).mouseup(function(ev)
         {
-            player.thrust(null);
+            player.thrust(ev);
             mouseDown = false;
         }).mousemove(function(ev)
         {
