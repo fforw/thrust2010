@@ -1338,11 +1338,17 @@ draw:
                  sub.dr = -sub.dr;
              }
         }
-        
-        if (this.count-- <= 0 && this.callback)
+    },
+move:
+    function()
+    {
+        if (this.count-- <= 0)
         {
             this.world.removeObject(this);
-            this.callback.call(this.ctx || this);
+            if (this.callback)
+            {
+                this.callback.call(this.ctx || this);
+            }
         }
     },
 getBBox:
