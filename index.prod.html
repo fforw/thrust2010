@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Thrust - canvas game</title>
+<style type="text/css">
+body,div
+{
+	margin:0;
+	padding: 0;
+	background: #000;
+	color: #f0f0f0;
+}
+
+#holder
+{	
+	width: 100%;
+	margin: 0 auto;
+	background: #080808;
+	overflow: hidden;
+}
+
+#header
+{
+	height: 40px;
+}
+
+#header a
+{
+	color: #eee;
+	float: right;
+	margin: 0 1ex;
+}
+
+#header a:visited
+{
+	color: #ddf;
+}
+
+#header ul,#header li
+{
+	display: inline
+}
+
+#header select
+{
+	vertical-align: super;
+}
+#header h1
+{
+	font-size: 32px;
+	line-height: 40px;
+	display: inline;
+	color: #fff;
+}
+
+#header h1 a
+{
+	float: none;
+	text-decoration: none;
+}
+span.nav
+{
+	font-size: 0.9em;
+	font-color: #ddd;
+	float: right;
+	line-height: 40px;
+	height: 40px;
+}
+
+</style>
+
+<script type="text/javascript" src="thrust-all.js">
+</script>
+
+</head>
+<body>
+<div id="header">
+	<form action="index.html" method="get">
+	<h1><a href="index.html">Thrust 2010</a></h1>
+	<div id="cheat" style="display: none">
+	<select id="levelSelector" name="level" class="nav">
+	</select> 
+	</div>
+	<a class="nav" href="help.html">Instructions</a>
+	<a class="nav" href="http://github.com/fforw/thrust2010">Github</a>
+	<a class="nav" href="thrust-current.zip">Download .ZIP</a>
+	</form>
+</div>
+<canvas id="teh_canvas"><p>This only works with browsers supporting canvas.</p></canvas>
+</body>
+</html>

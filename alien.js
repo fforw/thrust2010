@@ -1,4 +1,4 @@
-/*
+/*!
  * Thrust 2010 Copyright (C) 2010 by Sven Helmberger.
  * 
  * This software is licensed under the AGPL license. 
