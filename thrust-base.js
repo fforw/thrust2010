@@ -779,13 +779,22 @@ draw:
     {
         if (!this.dead)
         {
-            if (this.thrusterPos)
+            var thrusterActive = this.thrustPoint;
+            var pos = thrusterActive ? this.thrustPoint : this.thrustHelp;
+            
+            if (pos)
             {
                 ctx.beginPath();
                 
-                ctx.fillStyle="#ffc";
-                ctx.strokeStyle="#c00";
-                ctx.arc(this.thrusterPos.x, this.thrusterPos.y, 3, 0, Math.PI*2, false);
+                ctx.fillStyle= thrusterActive ? "#ffc" : "#aa8000";
+                ctx.strokeStyle= thrusterActive ? "#c00" : "#400";
+    
+                var v = this.pos.substract(pos);
+                var length = v.length();
+                v = v.multiply((this.radius + 1) / length);
+                v = this.pos.substract(v);
+                
+                ctx.arc(v.x, v.y, thrusterActive ? 3 : 2, 0, Math.PI*2, false);
                 ctx.fill();
                 ctx.stroke();
             }
@@ -941,17 +950,31 @@ move:
 
         this.translate(this.dx,this.dy);
 
-        var dist = this.radius + 1;
-        this.thrusterPos = this.thrustPoint ? this.pos.substract(delta.x * dist, delta.y * dist) : null;
     },
 thrust:
-    function(point)
+    function(point, active)
     {
         if (this.dead)
         {
             return;
         }
-        this.thrustPoint = this.world.fromScreen(point);
+        
+        if (point)
+        {
+            if (active)
+            {
+                this.thrustPoint = this.world.fromScreen(point);
+            }
+            else
+            {
+                this.thrustHelp = this.world.fromScreen(point);
+            }
+        }
+        else
+        {
+            this.thrustHelp = this.thrustPoint; 
+            this.thrustPoint = null;
+        }
     },
 shoot:
     function(point)

@@ -204,9 +204,7 @@ init:
         function thrust(ev) 
         { 
             var point = new Vector2D( ev.pageX , ev.pageY).substract(canvasOffset);
-            //var pos = new Vector2D(player.x,player.y);
-            //console.debug("point = %s, pos = %s", point,pos);
-            player.thrust( point);
+            player.thrust( point, mouseDown);
             
         }
         
@@ -233,10 +231,7 @@ init:
             mouseDown = false;
         }).mousemove(function(ev)
         {
-            if (mouseDown)
-            {
-                thrust(ev);                
-            }
+            thrust(ev);                
         }).keydown(function(ev)
         {
             switch(ev.keyCode)
