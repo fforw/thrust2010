@@ -1,3 +1,10 @@
+/*
+ * Thrust 2010 Copyright (C) 2010 by Sven Helmberger.
+ * 
+ * This software is licensed under the AGPL license. 
+ * project root for LICENSE AND README.
+ * 
+ */
 this.Vector2D = function(x,y)
 {
     this.x = x;
