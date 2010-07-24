@@ -210,6 +210,8 @@ checkNextLevel:
        {
            jQuery.cookies.set("thrust2010_data", "{ \"score\": " + this.score + ",\"lives\": " + this.lives+ "}");
            
+           // borrow live until reset in new level
+           ++this.lives;
            ++this.level;
            var max = Thrust.levels.length - 1;
            if (this.level >= max)
@@ -913,7 +915,8 @@ move:
 
                     this.translate(align.x * 0.3, align.y * 0.3);
                 }
-                else
+
+                if (distToBase < .2)
                 {
                     this.world.checkNextLevel();
                 }
