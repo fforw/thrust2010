@@ -23,9 +23,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.25"
-     inkscape:cx="-382.12694"
-     inkscape:cy="1126.4776"
+     inkscape:zoom="0.70710678"
+     inkscape:cx="446.58366"
+     inkscape:cy="682.96218"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -226,7 +226,10 @@
        sodipodi:cx="913.58197"
        id="path2907"
        style="fill:url(#radialGradient3893);fill-opacity:1;stroke:none;opacity:0.67477204"
-       sodipodi:type="arc" />
+       sodipodi:type="arc">
+      <desc
+         id="desc2920">{&quot;force&quot;:550}</desc>
+    </path>
     <path
        transform="translate(489.01486,286.50277)"
        sodipodi:type="arc"
@@ -295,15 +298,16 @@
        inkscape:label="#sentinel" />
     <path
        inkscape:label="#scene"
-       id="path3885"
-       d="m 923.5689,488.47661 -30.27044,12.38699 -21.70568,13.74001 5.71514,40.11985 43.37264,17.0862 36.5892,-16.03606 2.33936,-28.90259 -4.63089,-28.43791 -31.40933,-9.95649 z"
-       style="fill:#662222;fill-opacity:1;stroke:none" />
-    <path
-       inkscape:label="#scene"
        sodipodi:nodetypes="ccccccccccccccccccccccc"
        id="path3881"
        d="m 659.25633,106.44021 161.64917,27.73083 100.32459,-28.63459 22.32459,5.36541 -46.70168,-140.53835 41.2984,-101.53835 88.2983,-16.46298 -1026.4497,1.571 0,394.842 9.9601405,-32.15111 -0.8535607,-2.03051 26.2665012,-20.81424 35.105335,-9.50054 49.057134,8.65817 103.70231,11.99675 4.05786,3.86198 94.86311,-14.75922 66.90658,3.71039 2.65658,2.21038 50.47322,-7.06488 76.99648,-29.23143 60.66507,-43.09726 79.39957,-14.12345 z"
-       style="fill:#818191;fill-opacity:1;stroke:none;stroke-opacity:1" />
+       style="fill:#818191;fill-opacity:1;stroke:none;stroke-opacity:1">
+      <path
+         inkscape:label="#scene"
+         id="path3885"
+         d="m 923.5689,488.47661 -30.27044,12.38699 -21.70568,13.74001 5.71514,40.11985 43.37264,17.0862 36.5892,-16.03606 2.33936,-28.90259 -4.63089,-28.43791 -31.40933,-9.95649 z"
+         style="fill:#662222;fill-opacity:1;stroke:none" />
+    </path>
     <path
        inkscape:label="#scene"
        id="path3879"

@@ -76,31 +76,13 @@ readCircleData:
             rx: (+$elem.attr("sodipodi:rx")),
             ry: (+$elem.attr("sodipodi:ry")) };
         
-        var transform = this.parseTransform($elem);
+        var transform = parseTransform($elem);
         if (transform)
         {
             data.x += transform.x;
             data.y += transform.y;
         }
         return data;
-    },
-parseTransform:    
-    function($elem)
-    {
-        var s = $elem.attr("transform");
-        var m = /translate\((.*)\)/.exec(s);
-        if (m)
-        {
-            var n = m[1].split(",");
-            
-            
-            var v = new Vector2D(+n[0], +(n[1] || 0));
-            //console.debug("matched %o", v);
-            return v;
-        }
-        
-        //console.debug("not matched %s", s);
-        return null;
     },
 svgStyle:
     function($elem, name)
@@ -340,8 +322,11 @@ removeObject:
         }
     },
 createSubPaths:
-    function(pathData,style)
+    function(pathData,style, xOff, yOff)
     {
+        xOff = xOff || 0;
+        yOff = yOff || 0;
+        
         var x=0, y=0, idx = 0;
         var data = pathData.split(/[ ,]/);
         var len = data.length;
@@ -399,6 +384,15 @@ createSubPaths:
                     points.push(new Vector2D(x,y));
                     break;
                 case "z":
+                    if (xOff !== 0 || yOff !== 0)
+                    {
+                        for ( var i = 0, len = points.length; i < len; i++)
+                        {
+                            var pt = points[i];
+                            pt.x += xOff;
+                            pt.y += yOff;
+                        }
+                    }
                     var poly = new Polygon(this,points, false, style);
                     paths.push(poly);
                     
@@ -514,7 +508,7 @@ drawOutsideBox:
     {
         ctx.save();
         //ctx.globalCompositeOperation = "destination-over";
-        ctx.fillStyle = "#444";
+        ctx.fillStyle = this.outsideBoxStyle;
         var topLeft = new Vector2D(this.box.x, this.box.y).substract(this.offset);
         
         //console.debug("topLeft = %o", topLeft);
@@ -607,7 +601,7 @@ this.Polygon = GameObject.extend({
         {
             // parse and use first sub path
             points = parseSubPaths(points)[0];
-            console.debug("points = %o", points)
+//            console.debug("points = %o", points)
         }
     
         this.world = world;
@@ -628,7 +622,14 @@ fromSvg:
         if (name === "#scene")
         {
             var pathData = $elem.attr("d");
-            world.createSubPaths(pathData, this.readStyle($elem));
+            var transform = parseTransform($elem) || new Vector2D(0,0);
+            
+            var style = this.readStyle($elem);
+            if (!world.outsideBoxStyle)
+            {
+                world.outsideBoxStyle = style.fillStyle;
+            }
+            world.createSubPaths(pathData, style, transform.x, transform.y);
             return true;
         }
         return false;
@@ -636,9 +637,6 @@ fromSvg:
 draw:
     function(ctx, debug)
     {
-        if (debug)
-            console.debug("draw polygon: %o", this.points);
-        
         ctx.save();
         ctx.translate(this.pos.x, this.pos.y);
         
@@ -648,14 +646,10 @@ draw:
         pt0 = pts[0];
         ctx.beginPath();
         ctx.moveTo(pt0.x, pt0.y);
-        if (debug)
-            console.debug("ctx.moveTo( %d, %d);",pt0.x, pt0.y);
         for ( var i = 1, len = pts.length; i < len; i++)
         {
             var pt = pts[i];
             ctx.lineTo(pt.x,pt.y);
-            if (debug)
-                console.debug("ctx.lineTo(%d,%d);",pt.x,pt.y);
         }
         ctx.lineTo(pt0.x,pt0.y);
         ctx.closePath();
@@ -691,7 +685,7 @@ registerLines:
         this.world.insertLineBox( ptLast, pts[0]);
         this.box = box;
         
-        console.debug("register %o for %o", box, this);
+//        console.debug("register %o for %o", box, this);
         
         this.world.rtree.insert(box, this);
     },
@@ -1154,7 +1148,7 @@ init:
         var candidates = world.rtree.search({x: x - 25, y: y - 50, w: 50, h:100});
         var best = findClosestPointInCandidates(candidates, this.pos);
 
-        console.debug("best match = %o", best);
+//        console.debug("best match = %o", best);
         
         //new Marker(best.closest.x, best.closest.y);
         
@@ -1174,9 +1168,9 @@ fromSvg:
     {
         if (name.indexOf("#start") === 0)
         {
-            console.debug("is #start");
+//            console.debug("is #start");
             return function() {
-                console.debug("create base");
+//                console.debug("create base");
                 var base = new Base(world, (+$elem.attr("x")), (+$elem.attr("y")));
                 world.base = base; 
             };
@@ -1208,7 +1202,7 @@ score: 200,
 init:
     function(world,x,y,r)
     {
-    console.debug("create Sentinel( world, %d, %d, %d)", x, y, r);
+//    console.debug("create Sentinel( world, %d, %d, %d)", x, y, r);
         this.pos = new Vector2D(x,y);
         this.radius = 10;
         this.observationRadius = r;
@@ -1377,7 +1371,7 @@ fromSvg:
             var x = (+$elem.attr("sodipodi:cx"));
             var y = (+$elem.attr("sodipodi:cy"));
 
-            var transform = this.parseTransform($elem);
+            var transform = parseTransform($elem);
             
             if (transform)
             {
@@ -1536,11 +1530,13 @@ draw:
 
 this.GravPoint = GameObject.extend({
 init:
-    function(world, x, y, r)
+    function(world, x, y, r, force)
     {
+//        console.debug("gravpoint force = %d", force);
+    
         this.pos = new Vector2D(x,y);
         this.radius = r;
-        this.force = 600;
+        this.force = force || 600;
         this.type="gravpoint";
         world.addGravSource(this);
     },
@@ -1554,8 +1550,11 @@ fromSvg:
     {
         if (name === "#gravpoint")
         {
+            var force = +$elem.attr("force");
             var data = this.readCircleData($elem);
-            new GravPoint(world, data.x, data.y, (data.rx + data.ry) / 2);
+            
+            var data = svgJSON($elem);
+            new GravPoint(world, data.x, data.y, (data.rx + data.ry) / 2, data.force);
             return true;
         }
         return false;
@@ -1579,14 +1578,15 @@ doGravity:
 
 this.GravBox = GameObject.extend({
 init:
-    function(world, pt0, pt1, h, clockwisity)
+    function(world, pt0, pt1, h, clockwisity, force)
     {
+    
         this.world = world;
         this.pt0 = pt0;
         this.pt1 = pt1;
         this.height = h;
         this.clockwisity = clockwisity;
-        this.force = 50;
+        this.force = force || 50;
         
         this.type = "gravbox";
 
@@ -1594,7 +1594,7 @@ init:
         
         var v = pt1.substract(pt0).norm().multiply(h);
 
-        console.debug("gravbox v = %o", v);
+//        console.debug("gravbox v = %o", v);
         
         var ext0 = pt0.substract(v);
         var ext1 = pt1.add(v);
@@ -1648,7 +1648,8 @@ fromSvg:
                 }
             }
             
-            new GravBox(world, pt0, pt1, max, clockwisity);
+            var data = svgJSON($elem);
+            new GravBox(world, pt0, pt1, max, clockwisity, data.force);
             
             return true;
         }

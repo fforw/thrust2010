@@ -1,0 +1,137 @@
+Thrust 2010 - HTML5/Canvas game
+Copyright (C) 2010 Sven Helmberger
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+INTRODUCTION
+============
+
+These are the files for the Thrust 2010 HTML5/Canvas game.
+
+No compilation needed, just open the index.html with a modern browser. 
+Shouldn't matter whether you do that from your harddrive and file:// or
+if you copy it to a webserver before, unless you want others to play your
+version.
+
+.
+|-- alien.js			Alien control logic
+|-- Class.js			Simple Javascript inheritance by John Resig
+|-- help.html			Help-Page
+|-- help.png			image for help
+|-- index.html			main page
+|-- jquery-1.4.2.min.js		
+|-- jquery.cookies.js
+|-- json2.js			Douglas Crockford's json2.js
+|-- levels			This subdir contains all levels. They are made
+|				with InkScape (http://inkscape.org)
+|  
+|-- levels.js			Definition of active levels
+|-- rtree.js			RTree impl
+|-- synch.sh			Little script to synch the project to my i
+|                               server, build the zip
+|-- thrust-base.js		Thrust base object definitions
+|-- thrust.js			Main script.
+|-- util.js			various general util functions
+`-- vecmath.js			vector geometry stuff
+
+CREATING NEW LEVELS
+===================
+
+The levels itself are created with InkScape ( http://inkscape.org). 
+
+I recommend you do the same since InkScape mostly spits out the code the way
+Thrust2010 needs it. Might be possible to use other SVG programs, too.
+
+The game objects are recognized by special labels put on them in InkScape. 
+Here a short list of labels and their requirements/semantics.
+
+To set such a label, right click the SVG object you want to label and select 
+"Object Properties". Enter the label into the "Label" field starting with #
+
+If you have problems with Thrust2010 not really loading your level correctly,
+the XML-Editor built into InkScape might help you.
+
+In general, InkScape for now only supports objects with "translate(x,y)" 
+transform, but not "matrix(...)" transform. If you do funny things with your
+objects you might accidentally provide them with a matrix transform.
+In this case simply delete the matrix transform in the XML editor
+and move the object around until it sits at the right position again.
+
+The game objects are recognized by special labels put on them in InkScape. 
+Here a short list of labels and their requirements/semantics.
+
+
+THRUST SVG DSL
+==============
+
+Label: #scene
+
+#scene objects make up the static background of the levels. They need to be 
+paths only composed out of straight lines. The polygons can be concave, but 
+not complex. They can't cross themselves or contain holes. This is due to 
+canvas lack of even odd fill rule. Found no way around that. Thrust will draw
+a solid rectangular limit around the AABB of your level in the fill style of
+the first #scene path.
+
+
+Label: #start
+Must be rectangle object. Marks the position of the base/player.
+
+
+Label: #alien
+Alien ship controlled by AI code. Must have a way path defined to work.
+
+
+Label: #way-<id>-<nr>
+A non-closed path can be marked with this to register it as alien way path.
+
+<id> must be the SVG id of the alien the path belongs to
+<nr> the index of the path starting at 0. 
+
+Thrust with merge way paths components that are very close to another
+way path's point. This enables the alien to do backtracking walk-alongs 
+multiple paths.
+
+
+Label: #sentinel
+
+A turret like automatic shooter. Must be a circle shape. The center of the 
+circle is the sentinel position, the area of the object marks the observation
+area of the sentinel.
+
+
+Label: #gravpoint
+
+An invisible point of large mass that attracts all gravity-bound objects 
+leading to them either orbiting the gravpoint or crashing into it. Must be a
+circle shape. Center defines gravpoint location, Area defines the area
+it is active. if you set the description to a JSON string like 
+
+{"force":600}
+
+you can change the force default of 500.
+
+
+Label: #gravbox
+
+A gravbox has an area of linear gravity that can be different from the normal gravity.
+It must be a path set up in a special way: The first two points of the path define
+the gravbox base line which is the line everything gravitates to in the box.
+
+All further points just define the height of the gravbox and must be on only one side
+of the base line. At the ends, the gravbox is rounded to the height radius.
+
+
+

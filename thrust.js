@@ -127,7 +127,7 @@ init:
                     }
                     if (!created)
                     {
-                        console.debug("not object created for $elem = %o, name=%s", $elem, name);
+                        console.info("no object created for SVG elem: %o, name=%s", $elem, name);
                     }
                 });
                 
@@ -149,7 +149,7 @@ init:
                 var off = $canvas.offset();
                 canvasOffset = new Vector2D(off.left, off.top);
                 
-                console.debug("canvasOffset = %o", canvasOffset);
+                //console.debug("canvasOffset = %o", canvasOffset);
                 
                 // register additional lines for level bounds
                 var topLft = new Vector2D(world.box.x, world.box.y);
@@ -263,7 +263,8 @@ init:
                     }
                     break;
                 default:
-                    console.debug("key = %d", ev.keyCode);
+                    //console.debug("key = %d", ev.keyCode);
+                    break;
             }
         });
         

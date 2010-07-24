@@ -130,7 +130,7 @@ currentWayPoint:
         var pt = this.paths[pos.path][pos.idx];
         if (!pt)
         {
-            console.debug("No way point for %s:%d", pos.path, pos.idx);
+            console.error("No way point for %s:%d", pos.path, pos.idx);
         }
         
         return pt;
@@ -235,9 +235,9 @@ fromSvg:
             
             return function() {
                 
-                var transform = that.parseTransform($elem) || new Vector2D(0,0);
+                var transform = parseTransform($elem) || new Vector2D(0,0);
                 
-                console.debug("transform of %x is %o", $elem, transform);
+                //console.debug("transform of %x is %o", $elem, transform);
                 var pointsArray = parseSubPaths(pathData, transform.x, transform.y);
                 
                 for ( var i = 0, len = pointsArray.length; i < len; i++)
@@ -261,7 +261,7 @@ link:
         if (idx >= 0)
         {
             var linkedTo = { path: path, idx: idx } ;
-            console.debug("link %o to %o", pt, linkedTo);
+            //console.debug("link %o to %o", pt, linkedTo);
             pt.linkedTo = linkedTo ;
         }
     },

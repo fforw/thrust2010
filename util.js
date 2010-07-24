@@ -80,7 +80,7 @@ this.parseSubPaths=function(pathData, xOff, yOff)
         x = xOff || 0;
         y = yOff || 0;
         
-        console.debug("path offset x: %d, y: %d", x,y);
+        //console.debug("path offset x: %d, y: %d", x,y);
         
         for ( var i = 0, len = paths.length; i < len; i++)
         {
@@ -158,6 +158,44 @@ this.chksum = function(s)
         chk = (chk ^ (s.charCodeAt(i) * 69069)) & 0xffffffff;
     }    
     return chk;
+};
+
+this.parseTransform = function($elem)
+{
+    var s = $elem.attr("transform");
+    var m = /translate\((.*)\)/.exec(s);
+    if (m)
+    {
+        var n = m[1].split(",");
+        
+        
+        var v = new Vector2D(+n[0], +(n[1] || 0));
+        //console.debug("matched %o", v);
+        return v;
+    }
+    
+    //console.debug("not matched %s", s);
+    return null;
+};
+
+this.svgJSON = function($elem)
+{
+    var $desc = $elem.find("desc");
+    if ($desc.length)
+    {
+        var txt = $desc.text();
+        try
+        {
+            var data = JSON.parse(txt);
+            //console.debug("metadata is %o", data);
+            return data;
+        }
+        catch(e)
+        {
+            console.error("Could not parse svg metadata:", txt);
+        }
+    }
+    return {};
 };
 
 })();

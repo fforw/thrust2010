@@ -127,7 +127,7 @@ function checkVector(v)
         var arg = arguments[i];
         if (!arg || typeof arg.projectOnto !== "function")
         {
-            console.debug("%o is no vector", arg);
+            console.info("%o is no vector", arg);
         }
     }
 
