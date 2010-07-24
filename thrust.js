@@ -104,27 +104,27 @@ init:
                     
                     var $elem = $(this);
                 
-                    console.debug($elem);
+                    //console.debug($elem);
                     
                     var name = $elem.attr("inkscape:label");
-                    var worldBBox = new BBox();
-                    
                     var created = false;
-                    for ( var i = 0, len = svgFactories.length; i < len; i++)
+                    if (name)
                     {
-                        var factory = svgFactories[i];
-                        if (result = factory.create(world, $elem, name))
+                        for ( var i = 0, len = svgFactories.length; i < len; i++)
                         {
-                            if (typeof result == "function")
+                            var factory = svgFactories[i];
+                            if (result = factory.create(world, $elem, name))
                             {
-                                delayed.push(result);
+                                if (typeof result == "function")
+                                {
+                                    delayed.push(result);
+                                }
+                                
+                                created = true;
+                                break;
                             }
-                            
-                            created = true;
-                            break;
                         }
                     }
-                    
                     if (!created)
                     {
                         console.debug("not object created for $elem = %o, name=%s", $elem, name);
