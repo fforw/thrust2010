@@ -59,7 +59,23 @@ function convert(s)
     
 }
 
-var $canvas, canvasOffset, animationTime = null;
+var $canvas, canvasOffset, animationTime = null, mouseTimer, mousePoint;
+
+function tractOrNot(player, obj, r)
+{
+    var dist = player.pos.substract(obj.pos).length();
+    if (obj.connected)
+    {
+        obj.connected = false;
+        player.connected = null;
+    }
+    else if (dist < r)
+    {
+        obj.connected = true;
+        obj.resting = false;
+        player.connected = obj;
+    }
+}
 
 window.Thrust = {
 init:
@@ -214,19 +230,39 @@ init:
         
         var $doc = $(document).mousedown(function(ev)
         {
-            if (ev.button == 2 || ev.ctrlKey)
+            mousePoint = world.fromScreen(new Vector2D(ev.pageX,ev.pageY).substract(canvasOffset));
+            mouseTimer = setTimeout(function()
             {
-                var point = world.fromScreen(new Vector2D(ev.pageX,ev.pageY).substract(canvasOffset));
-                player.shoot(point);
-                return false;
-            }
-            else
-            {
+                mouseTimer = null;
                 mouseDown = true;
                 thrust(ev);
-            }
+            }, 150);
         }).mouseup(function(ev)
         {
+            if (mouseTimer)
+            {
+                clearTimeout(mouseTimer);
+                if (mousePoint)
+                {
+                    var r = world.player.tractorMax * .66;
+                    var d = r+r;
+                    var candidates = world.rtree.search({x: world.player.pos.x - r, y: world.player.pos.y - r, w: d, h: d });
+                    
+                    for ( var i = 0, len = candidates.length; i < len; i++)
+                    {
+                        var obj = candidates[i];
+                        if (obj.type === "cargo")
+                        {
+                            tractOrNot(world.player, obj, r);
+                            return;
+                        }
+                    }
+                    
+                    player.shoot(mousePoint);
+                    mousePoint = null;
+                }
+            }        
+            
             player.thrust(ev);
             mouseDown = false;
         }).mousemove(function(ev)
@@ -249,18 +285,7 @@ init:
                         var obj = objects[i];
                         if (obj.type === "cargo")
                         {
-                            var dist = playerPos.substract(obj.pos).length();
-                            if (obj.connected)
-                            {
-                                obj.connected = false;
-                                player.connected = null;
-                            }
-                            else if (dist < r)
-                            {
-                                obj.connected = true;
-                                obj.resting = false;
-                                player.connected = obj;
-                            }
+                            tractOrNot(world.player, obj, r);
                         }
                     }
                     break;
