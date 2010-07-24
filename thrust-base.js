@@ -167,6 +167,8 @@ toString:
     }
 };
 
+var lastScrollOffset = new Vector2D(0,0);
+
 this.World = Class.extend({
 init:
    function(id)
@@ -456,6 +458,23 @@ draw:
         
         ctx.clearRect(0,0,canvasWidth,canvasHeight);
         var offset = this.player.pos.substract( canvasWidth / 2, canvasHeight / 2);
+        
+        var player = world.player;
+        var pos = player.thrustPoint || player.thrustHelp; 
+        if ( pos )
+        {
+            var v = offset.substract(lastScrollOffset);
+            if (player.thrustPoint)
+            {
+                player.thrustPoint = player.thrustPoint.add(v);
+            }
+            else if (player.thrustHelp)
+            {
+                player.thrustHelp = player.thrustHelp.add(v);
+            }
+        }
+        
+        lastScrollOffset = offset;
         //console.debug(this.ox)
         
         if (this.overview)
