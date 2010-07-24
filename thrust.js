@@ -239,6 +239,7 @@ init:
             }, 150);
         }).mouseup(function(ev)
         {
+<<<<<<< HEAD
             if (mouseTimer)
             {
                 clearTimeout(mouseTimer);
@@ -264,7 +265,6 @@ init:
             }        
             
             mouseDown = false;
-            console.debug("ev = %o", ev);
             thrust(ev);
         }).mousemove(function(ev)
         {
