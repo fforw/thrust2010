@@ -788,8 +788,8 @@ explode:
         if (!this.dead)
         {
             this.dead = true;
-            
-            new Explosion(this.world, pos || this.pos.clone(), 15, this == this.world.player ? this.world.player.reset : function() {}, this.world.player);
+            var that = this;
+            new Explosion(this.world, pos || this.pos.clone(), 15, this == this.world.player ? this.world.player.reset : function() { that.world.removeObject(that); }, this.world.player);
         }
     },
 draw:
