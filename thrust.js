@@ -87,7 +87,9 @@ init:
         
         if (levelParam)
         {
-            var data = JSON.parse($.cookies.get("thrust2010_data") || "{\"score\":0,\"lives\":5}");
+            var cookie = $.cookies.get("thrust2010_data");
+            
+            var data = cookie ? JSON.parse( cookie ) : {"score":0,"lives":5};
             world.score = data.score;
             world.lives = data.lives;
         }
@@ -99,8 +101,6 @@ init:
             dataType: "xml", 
             success:function(data) 
             { 
-                var playerX = 0, playerY = 0;
-                
                 //console.debug(data);
                 
                 var svgFactories = SvgFactory.prototype.getRegistered();
@@ -147,7 +147,7 @@ init:
                 
                 var playerX = pt.x + 25;
                 var playerY = pt.y - 25 ;
-                //console.debug("World box: %s", world.box);
+                console.debug("player pt = %d,%d", playerX, playerY);
                 
                 player = new Ship(world, playerX, playerY);
                 world.player = player;
@@ -176,27 +176,34 @@ init:
                     obj.message("prepare");
                 }
                 
-                animationTime = (new Date()).getTime();
-                var lastFrame = animationTime;
+                ;
+                var lastFrame = animationTime = (new Date()).getTime();
                 (function mainLoop()
                 {
-                    var time = (new Date()).getTime();
-                    
-                    while (animationTime < time)
-                    {                    
-                        world.step();
-                        animationTime += STEP_TIME;
-                    }
-                    world.step();
-                    world.draw();
-                    
-                    var wait = (lastFrame + FRAME_TIME) - (new Date()).getTime();
-                    if (wait < 1)
+                    try
                     {
-                        wait = 1;
+                        var time = (new Date()).getTime();
+                        
+                        while (animationTime < time)
+                        {                    
+                            world.step();
+                            animationTime += STEP_TIME;
+                        }
+                        world.step();
+                        world.draw();
+                        
+                        var wait = (lastFrame + FRAME_TIME) - (new Date()).getTime();
+                        if (wait < 1)
+                        {
+                            wait = 1;
+                        }
+                        window.setTimeout(mainLoop, wait);
+                        lastFrame = time;
                     }
-                    window.setTimeout(mainLoop, wait);
-                    lastFrame = time;
+                    catch(e)
+                    {
+                        console.error("Error in mainLoop", e);
+                    }
                 })();                
             }
         });
@@ -278,6 +285,8 @@ init:
         }
         
         $("#levelSelector").change(function(ev){
+            
+            $.cookies.remove("thrust2010_data");
             document.location.href = "index.html?level=" + this.value;
         }).append($(opts.join("")));
     }

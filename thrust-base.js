@@ -759,8 +759,7 @@ reset:
         //var paper = this.world.paper;
         //this.canvasObjs[0] = paper.circle(0, 0, 10);
         
-        this.pos.x = this.initX;
-        this.pos.y = this.initY;
+        this.pos = new Vector2D( this.initX, this.initY);
         
         this.dx = 0;
         this.dy = 0;
@@ -790,7 +789,7 @@ explode:
         {
             this.dead = true;
             
-            new Explosion(this.world, pos || this.pos.clone(), 15, this == this.world.player ? this.world.player.reset : function() {}, player);
+            new Explosion(this.world, pos || this.pos.clone(), 15, this == this.world.player ? this.world.player.reset : function() {}, this.world.player);
         }
     },
 draw:
