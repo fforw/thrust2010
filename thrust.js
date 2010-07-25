@@ -89,9 +89,13 @@ init:
         {
             var cookie = $.cookies.get("thrust2010_data");
             
-            var data = cookie ? JSON.parse( cookie ) : {"score":0,"lives":5};
+            var data = cookie ? JSON.parse( cookie ) : {"score":0,"lives":4};
             world.score = data.score;
             world.lives = data.lives;
+        }
+        else
+        {
+            $.cookies.remove("thrust2010_data");
         }
             
         var delayed = [];
@@ -198,10 +202,27 @@ init:
                             wait = 1;
                         }
                         
-                        if (this.scoreObjsCount !== 0)
+                        if (world.scoreObjsCount !== 0 || world.player.gravityBound || !world.player.atRest)
                         {
                             window.setTimeout(mainLoop, wait);
                         }
+                        else
+                        {
+                            ++world.level;
+                            var max = Thrust.levels.length - 1;
+                            if (world.level >= max)
+                            {
+                                world.level = 0;
+                            }
+
+                            jQuery.cookies.set("thrust2010_data", "{ \"score\": " + world.score + ",\"lives\": " + world.lives+ "}");
+                            
+                            window.setTimeout(function()
+                            {
+                                document.location.href = "index.html?level=" + world.level + ":" + chksum(Thrust.levels[world.level]);
+                            }, 10);
+                        }
+                        
                         lastFrame = time;
                     }
                     catch(e)
@@ -289,8 +310,6 @@ init:
         }
         
         $("#levelSelector").change(function(ev){
-            
-            $.cookies.remove("thrust2010_data");
             document.location.href = "index.html?level=" + this.value;
         }).append($(opts.join("")));
     }

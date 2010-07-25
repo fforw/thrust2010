@@ -194,29 +194,6 @@ init:
         
         this.gravs = [];
    },
-checkNextLevel:
-    function()
-    {
-       if (this.scoreObjsCount == 0)
-       {
-           jQuery.cookies.set("thrust2010_data", "{ \"score\": " + this.score + ",\"lives\": " + this.lives+ "}");
-           
-           // borrow life until reset in new level
-           if (!this.borrowed)
-           {
-               ++this.lives;
-               this.borrowed = true;
-           }
-           ++this.level;
-           var max = Thrust.levels.length - 1;
-           if (this.level >= max)
-           {
-               this.level = max;
-           }
-           
-           document.location.href = "index.html?level=" + this.level + ":" + chksum(Thrust.levels[this.level]);
-       }
-    },
 insertLineBox: 
     function(pt0, pt1)
     {
@@ -423,7 +400,7 @@ createSubPaths:
 width: 1000,
 height: 1000,
 score: 0,
-lives: 5,
+lives: 4,
 borrowed: false,
 ox:0,oy:0,
 
@@ -752,34 +729,22 @@ init: function(world,initX,initY)
 reset:
     function()
     {
-        this.world.checkNextLevel();
-        
-        if (--this.world.lives >= 0)
+        if (this.world.lives >= 0)
         {
-        //var paper = this.world.paper;
-        //this.canvasObjs[0] = paper.circle(0, 0, 10);
-        
-        this.pos = new Vector2D( this.initX, this.initY);
-        
-        this.dx = 0;
-        this.dy = 0;
-        this.dead = false;
-        this.radius = 15;
-        this.thrustPower = 92000;
-        
-//        this.canvasObjs[0].attr({
-//            "fill": "#00f", 
-//            "stroke": "#88f", 
-//            "r" : this.radius, 
-//            "cx" : this.pos.x , 
-//            "cy" : this.pos.y});
-        
-        if (this.connected)
-        {
-            this.connected.connected = false;
-            this.connected = null;
-        }
-        this.thrustPoint = null;
+            this.pos = new Vector2D( this.initX, this.initY);
+            
+            this.dx = 0;
+            this.dy = 0;
+            this.dead = false;
+            this.radius = 15;
+            this.thrustPower = 92000;
+            
+            if (this.connected)
+            {
+                this.connected.connected = false;
+                this.connected = null;
+            }
+            this.thrustPoint = null;
         }
     },
 explode: 
@@ -789,7 +754,19 @@ explode:
         {
             this.dead = true;
             var that = this;
-            new Explosion(this.world, pos || this.pos.clone(), 15, this == this.world.player ? this.world.player.reset : function() { that.world.removeObject(that); }, this.world.player);
+            new Explosion(this.world, pos || this.pos.clone(), 15, 
+                function() 
+                { 
+                    if (that === that.world.player)
+                    {
+                        that.world.lives--;
+                        that.world.player.reset();
+                    }
+                    else
+                    {
+                        that.world.removeObject(that);
+                    }
+                });
         }
     },
 draw:
@@ -948,10 +925,9 @@ move:
 
                     this.translate(align.x * 0.3, align.y * 0.3);
                 }
-
-                if (distToBase < .2)
+                else
                 {
-                    this.world.checkNextLevel();
+                    this.atRest = true;
                 }
             }
         }
@@ -1291,7 +1267,11 @@ explode:
         {
             this.dead = true;
             var that = this;
-            new Explosion(this.world, pos || this.pos.clone(), 15, function() { that.world.removeObject(that); } );
+            new Explosion(this.world, pos || this.pos.clone(), 15, 
+                function() 
+                { 
+                    that.world.removeObject(that); 
+                });
         }
     },
 move:
@@ -1330,13 +1310,12 @@ getBBox:
 
 this.Explosion = GameObject.extend({
 init:
-    function(world, pos, r, fn, ctx)
+    function(world, pos, r, fn)
     {
         this.pos = pos;
         this._super(world);
         this.radius = r;
         this.callback = fn;
-        this.ctx = ctx;
         this.count = 3;
         this.zIndex = 2;
         this.type="explosion";
@@ -1393,7 +1372,7 @@ move:
             this.world.removeObject(this);
             if (this.callback)
             {
-                this.callback.call(this.ctx || this);
+                this.callback.call(this);
             }
         }
     },
