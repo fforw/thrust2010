@@ -1491,7 +1491,7 @@ move:
             
             var ptDock = this.world.base.pos.add(25,-12);
             var dist = ptDock.substract(this.pos).length();
-            if (dist < this.radius * 1.75)
+            if (dist < this.radius * 2)
             {
                 this.resting = true;
                 this.connected = false;
