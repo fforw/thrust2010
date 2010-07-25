@@ -483,10 +483,7 @@ draw:
         }
         else
         {
-            if (offset.x > 0 || offset.y > 0)
-            {
-                ctx.translate( -offset.x, -offset.y);
-            }
+            ctx.translate( -offset.x, -offset.y);
         }
 
         this.offset = offset;
