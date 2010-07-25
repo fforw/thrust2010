@@ -197,7 +197,11 @@ init:
                         {
                             wait = 1;
                         }
-                        window.setTimeout(mainLoop, wait);
+                        
+                        if (this.scoreObjsCount !== 0)
+                        {
+                            window.setTimeout(mainLoop, wait);
+                        }
                         lastFrame = time;
                     }
                     catch(e)
