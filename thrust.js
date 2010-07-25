@@ -271,7 +271,6 @@ init:
             }, 150);
         }).mouseup(function(ev)
         {
-<<<<<<< HEAD
             if (mouseTimer)
             {
                 clearTimeout(mouseTimer);
