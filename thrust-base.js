@@ -1527,6 +1527,15 @@ move:
             }
             
         }
+        
+        if (this.atBase > 0)
+        {
+            if (--this.atBase == 0)
+            {
+                this.world.removeObject(this);
+            }
+        }
+        
     },
 remove:
     function()
@@ -1583,10 +1592,6 @@ draw:
         if (this.atBase > 0)
         {
             ctx.fillStyle = "#0f0";
-            if (--this.atBase == 0)
-            {
-                this.world.removeObject(this);
-            }
         }
         ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2, false);       
         ctx.fill();
