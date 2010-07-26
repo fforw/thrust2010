@@ -262,39 +262,19 @@ init:
         
         var $doc = $(document).mousedown(function(ev)
         {
-            mousePoint = world.fromScreen(new Vector2D(ev.pageX,ev.pageY).substract(canvasOffset));
-            mouseTimer = setTimeout(function()
+            if (ev.button == 2 || ev.ctrlKey)
             {
-                mouseTimer = null;
+                var point = world.fromScreen(new Vector2D(ev.pageX,ev.pageY).substract(canvasOffset));
+                player.shoot(point);
+                return false;
+            }
+            else
+            {
                 mouseDown = true;
                 thrust(ev);
-            }, 150);
+            }
         }).mouseup(function(ev)
         {
-            if (mouseTimer)
-            {
-                clearTimeout(mouseTimer);
-                if (mousePoint)
-                {
-                    var r = world.player.tractorMax * .66;
-                    var d = r+r;
-                    var candidates = world.rtree.search({x: world.player.pos.x - r, y: world.player.pos.y - r, w: d, h: d });
-                    
-                    for ( var i = 0, len = candidates.length; i < len; i++)
-                    {
-                        var obj = candidates[i];
-                        if (obj.type === "cargo")
-                        {
-                            tractOrNot(world.player, obj, r);
-                            return;
-                        }
-                    }
-                    
-                    player.shoot(mousePoint);
-                    mousePoint = null;
-                }
-            }        
-            
             mouseDown = false;
             thrust(ev);
         }).mousemove(function(ev)
